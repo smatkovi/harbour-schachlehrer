@@ -75,6 +75,11 @@ class TeacherEngine : public QObject
     Q_PROPERTY(QVariantMap task READ task NOTIFY taskChanged)
     Q_PROPERTY(QVariantMap feedback READ feedback NOTIFY feedbackChanged)
     Q_PROPERTY(bool engineReady READ engineReady NOTIFY engineChanged)
+    // Why it is not running, in the engine's own words where there are any.
+    // Without this on screen nobody can tell a missing file from a refused
+    // exec from a network it could not load.
+    Q_PROPERTY(QString engineMessage READ engineMessage NOTIFY engineChanged)
+    Q_PROPERTY(QString enginePath READ enginePath NOTIFY engineChanged)
     Q_PROPERTY(bool thinking READ thinking NOTIFY engineChanged)
 
     // --- Was frage ich mich? (teacher.md §6.6, §7.5) -------------------------
@@ -173,6 +178,8 @@ public:
     QVariantMap task() const { return m_task; }
     QVariantMap feedback() const { return m_feedback; }
     bool engineReady() const;
+    QString engineMessage() const { return m_engineMessage; }
+    QString enginePath() const;
     bool thinking() const;
 
     QVariantList routine() const;
@@ -267,6 +274,9 @@ public:
     // game, unlocks the engine and goes back to Idle. The way out of a half
     // finished conversation with the server, and reachable from the UI.
     Q_INVOKABLE void leaveOnline();
+
+    // Test hook: the move the current task is graded against.
+    QString solutionForTest() const { return m_solutionUci; }
 
 signals:
     void positionChanged();
@@ -400,6 +410,7 @@ private:
     QVector<schach::BlunderCheckItem> m_checkItems;
     core::ErrorHistory m_history;
     QString m_engineMessage;
+    QString m_enginePath;
     qint64 m_currentGameId;
 
     // --- Lichess -------------------------------------------------------------

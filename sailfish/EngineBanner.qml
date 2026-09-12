@@ -71,5 +71,23 @@ Item {
             font.pixelSize: Style.fontSizeExtraSmall
             wrapMode: Text.WordWrap
         }
+        // The actual reason. It is the only thing that makes a report useful,
+        // so it is on screen and not only in the log.
+        Label {
+            width: parent.width
+            visible: banner.missing && text !== ""
+            text: teacher.engineMessage
+            color: Style.secondaryColor
+            font.pixelSize: Style.fontSizeExtraSmall
+            wrapMode: Text.WrapAnywhere
+        }
+        Label {
+            width: parent.width
+            visible: banner.missing && teacher.enginePath !== ""
+            text: qsTr("Gesucht unter: %1").arg(teacher.enginePath)
+            color: Style.secondaryColor
+            font.pixelSize: Style.fontSizeTiny
+            wrapMode: Text.WrapAnywhere
+        }
     }
 }

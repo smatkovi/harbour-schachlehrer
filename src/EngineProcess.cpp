@@ -312,6 +312,19 @@ void EngineProcess::handleLine(const QString& line)
     using namespace core::uciproto;
     const std::string text = line.toStdString();
 
+    // An engine that answered `uci` can still be unable to evaluate — a missing
+    // network is the usual case. It says so once, in an `info string`, and then
+    // simply never produces a move. Without this the app would wait for a
+    // `bestmove` that is never coming and report nothing.
+    if (line.startsWith(QLatin1String("info string")) && line.contains(QLatin1String("ERROR"))) {
+        m_lastError = line.mid(line.indexOf(QLatin1String("ERROR"))).trimmed();
+        setReady(false);
+        if (m_current.id != 0)
+            finishCurrent(false, m_lastError);
+        emit failed(m_lastError);
+        return;
+    }
+
     switch (classify(text)) {
     case LineKind::Id: {
         std::string key, value;
@@ -321,8 +334,17 @@ void EngineProcess::handleLine(const QString& line)
     }
     case LineKind::UciOk: {
         // Everything the app needs, once, and nothing that changes per move.
-        if (!m_evalFile.isEmpty())
+        if (!m_evalFile.isEmpty()) {
+            // Both of them. The small-net-only patch of platform.md §1.4 points
+            // the big network instance at the small architecture, so one file
+            // serves for both — but Stockfish still holds two options, and the
+            // one we leave unset is looked for next to the working directory.
+            // It is not found there, and the engine then refuses to evaluate at
+            // all: "Network evaluation parameters compatible with the engine
+            // must be available."
             send(QString::fromStdString(cmdSetOption("EvalFile", m_evalFile.toStdString())));
+            send(QString::fromStdString(cmdSetOption("EvalFileSmall", m_evalFile.toStdString())));
+        }
         if (!m_syzygyPath.isEmpty())
             send(QString::fromStdString(cmdSetOption("SyzygyPath", m_syzygyPath.toStdString())));
         send(QString::fromStdString(cmdSetOption("Threads", m_threads)));

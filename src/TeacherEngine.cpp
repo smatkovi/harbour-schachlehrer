@@ -155,6 +155,7 @@ void TeacherEngine::setPaths(const QString& enginePath, const QString& syzygyPat
     // rules work without it, only sparring and analysis do not (§5).
     if (!m_engine->start())
         m_engineMessage = m_engine->lastError();
+    m_enginePath = enginePath;
     emit engineChanged();
     emit progressChanged();
     emit routineChanged();
@@ -571,6 +572,8 @@ int TeacherEngine::startDifficulty() const
     // §4.9: the level the first tasks are picked around, not a rating.
     return static_cast<int>(m_skill.theta + 0.5);
 }
+
+QString TeacherEngine::enginePath() const { return m_enginePath; }
 
 QVariantList TeacherEngine::skills() const
 {
@@ -1047,9 +1050,11 @@ void TeacherEngine::loadNextTask()
         m_task = task;
         setPrompt(m_position.whiteToMove() ? tr("Weiß am Zug: Was machst du hier?")
                                            : tr("Schwarz am Zug: Was machst du hier?"));
+        m_flipped = !m_position.whiteToMove();
         m_taskClock.restart();
         emit positionChanged();
         emit selectionChanged();
+        emit boardChanged();
         emit taskChanged();
         return;
     }
@@ -1130,6 +1135,7 @@ void TeacherEngine::showAnswered(int index)
     const AnsweredItem& entry = m_answered.at(index);
     m_position.setFen(entry.fen.toStdString());
     m_selected = -1;
+    m_flipped = !m_position.whiteToMove();
     // The board highlights lastMove(); while reviewing that is the solution,
     // so the right move is marked on the position it was asked in.
     setPrompt(entry.correct
@@ -1243,10 +1249,16 @@ void TeacherEngine::presentCard(const core::Card& card)
     task[QStringLiteral("index")] = m_sessionIndex + 1;
     task[QStringLiteral("total")] = m_sessionCards.size();
     m_task = task;
-    setPrompt(tr("Am Zug: Was machst du hier?"));
+    // The task is always "you are to move", so the board has to be seen from
+    // that side. Without this a black-to-move position is shown upside down
+    // and the learner taps at the wrong end of the board.
+    m_flipped = !m_position.whiteToMove();
+    setPrompt(m_position.whiteToMove() ? tr("Weiß am Zug: Was machst du hier?")
+                                       : tr("Schwarz am Zug: Was machst du hier?"));
     m_taskClock.restart();
     emit positionChanged();
     emit selectionChanged();
+    emit boardChanged();
     emit taskChanged();
 }
 

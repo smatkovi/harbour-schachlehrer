@@ -21,7 +21,7 @@ CORE="$ROOT/src/core/Position.cpp $ROOT/src/core/Uci.cpp $ROOT/src/core/WinProb.
       $ROOT/src/core/Srs.cpp $ROOT/src/core/Card.cpp $ROOT/src/core/Routine.cpp"
 
 CORE_TESTS="perft uci taxonomy srs placement routine"
-QT_TESTS="fairplay lichess"
+QT_TESTS="fairplay lichess session"
 
 for t in $CORE_TESTS; do
     printf 'building test_%s\n' "$t"
