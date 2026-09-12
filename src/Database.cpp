@@ -261,6 +261,43 @@ QVector<GameRecord> Database::recentGames(int limit) const
     return out;
 }
 
+qint64 Database::newestPlayedAt(const QString& source) const
+{
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral("SELECT MAX(played_at) FROM games WHERE source = ?"));
+    query.addBindValue(source);
+    if (!query.exec() || !query.next())
+        return 0;
+    return query.value(0).toLongLong();
+}
+
+bool Database::hasExternalId(const QString& externalId) const
+{
+    return gameIdOfExternalId(externalId) > 0;
+}
+
+qint64 Database::gameIdOfExternalId(const QString& externalId) const
+{
+    if (externalId.isEmpty())
+        return -1;
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral("SELECT id FROM games WHERE ext_id = ?"));
+    query.addBindValue(externalId);
+    if (!query.exec() || !query.next())
+        return -1;
+    return query.value(0).toLongLong();
+}
+
+int Database::gameCountOfSource(const QString& source) const
+{
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral("SELECT COUNT(*) FROM games WHERE source = ?"));
+    query.addBindValue(source);
+    if (!query.exec() || !query.next())
+        return 0;
+    return query.value(0).toInt();
+}
+
 int Database::gameCount() const
 {
     QSqlQuery query(m_db);
@@ -582,6 +619,16 @@ bool Database::latestSkill(double& theta, QVector<double>& thetaPerDimension) co
     for (int i = 0; i < core::kDimensionCount; ++i)
         thetaPerDimension.append(query.value(1 + i).toDouble());
     return true;
+}
+
+qint64 Database::lastMeasuredAt() const
+{
+    QSqlQuery query(m_db);
+    if (!query.exec(QStringLiteral(
+                "SELECT measured_at FROM skills ORDER BY measured_at DESC, id DESC LIMIT 1"))
+        || !query.next())
+        return 0;
+    return query.value(0).toLongLong();
 }
 
 } // namespace schach

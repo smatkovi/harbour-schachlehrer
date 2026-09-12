@@ -28,15 +28,20 @@ import "."
 Item {
     id: banner
 
-    readonly property bool missing: !teacher.engineReady
+    // Two different reasons, two different sentences. "The engine is not
+    // running" would be a lie during a Lichess game — it is switched off on
+    // purpose, and the user has to know which of the two it is
+    // (platform.md §3.7).
+    readonly property bool live: teacher.liveGame
+    readonly property bool missing: !teacher.engineReady && !live
 
     width: parent ? parent.width : 0
-    height: missing ? row.height + 2 * Style.paddingMedium : 0
-    visible: missing
+    height: (missing || live) ? row.height + 2 * Style.paddingMedium : 0
+    visible: missing || live
 
     Rectangle {
         anchors.fill: parent
-        color: Style.errorColor
+        color: banner.live ? Style.highlightColor : Style.errorColor
         opacity: 0.16
         radius: Style.paddingSmall
     }
@@ -50,14 +55,18 @@ Item {
 
         Label {
             width: parent.width
-            text: qsTr("Die Schach-Engine läuft nicht.")
+            text: banner.live
+                  ? qsTr("Die Engine ist aus, weil deine Lichess-Partie läuft.")
+                  : qsTr("Die Schach-Engine läuft nicht.")
             color: Style.primaryColor
             font.pixelSize: Style.fontSizeSmall
             wrapMode: Text.WordWrap
         }
         Label {
             width: parent.width
-            text: qsTr("Brett, Karten und Regeln kannst du weiter benutzen. Sparring, Einstufung und die Analyse einer Partie brauchen die Engine und bleiben so lange aus.")
+            text: banner.live
+                  ? teacher.fairPlayNotice
+                  : qsTr("Brett, Karten und Regeln kannst du weiter benutzen. Sparring, Einstufung und die Analyse einer Partie brauchen die Engine und bleiben so lange aus.")
             color: Style.secondaryColor
             font.pixelSize: Style.fontSizeExtraSmall
             wrapMode: Text.WordWrap

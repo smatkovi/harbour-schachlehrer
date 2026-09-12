@@ -137,10 +137,13 @@ Page {
                 x: Style.horizontalPageMargin
                 width: parent.width - 2 * Style.horizontalPageMargin
                 wrapMode: Text.WordWrap
-                color: teacher.engineReady ? Style.secondaryColor : Style.errorColor
+                color: teacher.engineReady ? Style.secondaryColor
+                       : (teacher.liveGame ? Style.highlightColor : Style.errorColor)
                 text: teacher.engineReady
                       ? qsTr("Die Engine läuft. Sparring, Einstufung und Auswertung stehen zur Verfügung.")
-                      : qsTr("Die Engine läuft nicht. Brett, Karten und Regeln funktionieren trotzdem.")
+                      : (teacher.liveGame
+                         ? qsTr("Die Engine ist aus, weil gerade eine Lichess-Partie läuft. Das ist Absicht.")
+                         : qsTr("Die Engine läuft nicht. Brett, Karten und Regeln funktionieren trotzdem."))
             }
 
             Label {
@@ -151,6 +154,53 @@ Page {
                 font.pixelSize: Style.fontSizeExtraSmall
                 text: qsTr("Stockfish läuft als eigenes Programm neben der App und wird über UCI angesprochen. Die Endspieldatenbanken für drei und vier Steine sind im Paket enthalten; es wird nichts nachgeladen.")
             }
+
+            SectionHeader { text: qsTr("Lichess") }
+
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                wrapMode: Text.WordWrap
+                color: Style.secondaryColor
+                text: teacher.lichessLoggedIn
+                      ? qsTr("Angemeldet als %1.").arg(teacher.lichessAccount)
+                      : qsTr("Nicht angemeldet. Das ist kein Mangel: Einstufung, Wiederholungen, Drill und Sparring brauchen kein Konto.")
+            }
+
+            // platform.md §3.7, said once more where the account is managed —
+            // this is the rule that decides how the whole online part behaves.
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                wrapMode: Text.WordWrap
+                color: Style.secondaryColor
+                font.pixelSize: Style.fontSizeExtraSmall
+                text: teacher.fairPlayNotice
+            }
+
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                wrapMode: Text.WordWrap
+                color: Style.secondaryColor
+                font.pixelSize: Style.fontSizeExtraSmall
+                text: qsTr("Der Zugangsschlüssel liegt in einer Datei im Datenverzeichnis dieser App, die nur sie selbst lesen darf — nicht in den Einstellungen und nicht im Klartext irgendwo sonst. Beim Abmelden wird er gelöscht und bei Lichess widerrufen.")
+            }
+
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: teacher.lichessLoggedIn ? qsTr("Von Lichess abmelden")
+                                              : qsTr("Mit Lichess anmelden")
+                onClicked: {
+                    if (teacher.lichessLoggedIn)
+                        lichessRemorse.execute(qsTr("Abmelden"),
+                                               function () { teacher.lichessLogOut() })
+                    else
+                        pageStack.push(Qt.resolvedUrl("LichessPage.qml"))
+                }
+            }
+
+            RemorsePopup { id: lichessRemorse }
 
             SectionHeader { text: qsTr("Zurücksetzen") }
 

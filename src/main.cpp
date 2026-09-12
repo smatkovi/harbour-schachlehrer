@@ -21,6 +21,7 @@
 #include <sailfishapp.h>
 
 #include <QDir>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QLocale>
 #include <QStandardPaths>
@@ -56,7 +57,14 @@ int main(int argc, char *argv[])
     const QString dataDirectory =
         QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir().mkpath(dataDirectory);
-    teacher->setPaths(SailfishApp::pathTo(QStringLiteral("bin/stockfish")).toLocalFile(),
+    // The engine binary: /usr/bin first, because Sailjail is documented to be
+    // able to refuse an exec from /usr/share (chess-spec/platform.md §7.1), and
+    // the packaged path second, so an older installation keeps working.
+    QString enginePath = QStringLiteral("/usr/bin/harbour-schachlehrer-engine");
+    if (!QFileInfo(enginePath).isExecutable())
+        enginePath = SailfishApp::pathTo(QStringLiteral("bin/stockfish")).toLocalFile();
+
+    teacher->setPaths(enginePath,
                       SailfishApp::pathTo(QStringLiteral("syzygy")).toLocalFile(),
                       SailfishApp::pathTo(QStringLiteral("net/nn-37f18f62d772.nnue")).toLocalFile(),
                       dataDirectory + QStringLiteral("/schachlehrer.sqlite"));

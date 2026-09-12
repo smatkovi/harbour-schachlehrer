@@ -107,6 +107,14 @@ public:
     bool insertPlies(qint64 gameId, const QVector<PlyRecord>& plies);
     QVector<GameRecord> recentGames(int limit = 10) const;
     int gameCount() const;
+    // What the incremental Lichess sync needs (platform.md §3.6): the newest
+    // game we already have from that source, so the next download can ask for
+    // `since`, and the question whether one particular game is already here.
+    // `playedAt` is in seconds; the Lichess parameter is in milliseconds.
+    qint64 newestPlayedAt(const QString& source) const;
+    bool hasExternalId(const QString& externalId) const;
+    qint64 gameIdOfExternalId(const QString& externalId) const;
+    int gameCountOfSource(const QString& source) const;
     int ownMoveCount() const;
 
     // --- findings -----------------------------------------------------------
@@ -133,6 +141,9 @@ public:
     bool recordSkill(qint64 at, double theta, const QVector<double>& thetaPerDimension,
                      double blunderRate);
     bool latestSkill(double& theta, QVector<double>& thetaPerDimension) const;
+    // When the last measurement was taken, 0 if there never was one. The start
+    // page needs to tell "never measured" from "measured and unremarkable".
+    qint64 lastMeasuredAt() const;
 
 private:
     bool exec(const QString& sql);

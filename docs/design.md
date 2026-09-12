@@ -17,6 +17,18 @@ gibt es deshalb **keinen** Netzzugriff außer der optionalen Tablebase-Abfrage; 
 unimplementiert, aber die Datenhaltung ist so gebaut, dass die eigenen Partien später von Lichess
 dazukommen können.
 
+Seit M8 gibt es die Lichess-Anbindung (`src/Lichess.*`, `src/GameSync.*`, `sailfish/LichessPage.qml`,
+`sailfish/OnlineGamePage.qml`). Sie ist **freiwillig**: ohne Konto funktionieren Einstufungstest,
+Wiederholung, Blunder-Check-Drill und Sparring unverändert und vollständig. Die härteste Vorgabe des
+ganzen Projekts steht in `platform.md` §3.7 und ist als Codeeigenschaft gebaut, nicht als
+UI-Konvention: **solange eine Lichess-Partie läuft, gibt es keine Engine und keine Tablebase.** Eine
+einzige Instanzvariable `TeacherEngine::m_liveGameId` entscheidet das; ist sie gesetzt, beendet
+`EngineProcess::setFairPlayLock(true)` den Engine-Prozess (nicht pausieren — beenden), jede Anfrage in
+Engine und Tablebase wird abgelehnt, und `teacher.analysisAvailable` ist falsch, woran die Seiten den
+Analyse-Eintrag **ausblenden** statt ihn auszugrauen. `tests/test_fairplay.cpp` prüft genau das;
+`tests/test_lichess.cpp` prüft das Protokoll gegen aufgezeichnetes ndjson, ohne Netz und ohne Konto.
+Analysiert wird **nach** der Partie — das ist erlaubt und ist die Stelle, an der gelernt wird.
+
 ## 2. Repository
 
 ```
@@ -202,4 +214,4 @@ Das Brett ist ein `GridView` mit 64 Feldern, Figuren als SVG (cburnett, BSD-3-Cl
 | **M5** | Sparring mit Fehlerbudget, Rücknahme mit Erklärung, Blunder-Check-Drill | spielbar, Erklärungen im Klartext |
 | **M6** | Endspiele mit Tablebase-Feedback, die Grundmatts, Opposition, Lucena/Philidor | jeder Zug exakt benotet |
 | **M7** | Inhalte: Muster, Regelwerk, Glossar, Fortschrittsanzeige | vollständig auf Deutsch |
-| **M8** | Lichess (`platform.md` §3) | erst nach M7 |
+| **M8** | Lichess (`platform.md` §3) | erst nach M7 — erledigt: Board API, PKCE, Partieablauf, Partiedownload, Fair-Play-Sperre mit `tests/test_fairplay.cpp` |

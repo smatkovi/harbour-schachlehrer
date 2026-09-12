@@ -153,6 +153,10 @@ Page {
 
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
+                // While a Lichess game is running the app is in a different
+                // state altogether (platform.md §3.7): the way back to it is
+                // the only button that makes sense.
+                visible: !teacher.liveGame
                 text: qsTr("Sitzung beginnen")
                 onClicked: {
                     teacher.startSession()
@@ -162,6 +166,7 @@ Page {
 
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
+                visible: !teacher.liveGame
                 text: qsTr("Sparring")
                 enabled: teacher.engineReady
                 onClicked: {
@@ -181,13 +186,34 @@ Page {
                 wrapMode: Text.WordWrap
                 color: Style.secondaryColor
                 font.pixelSize: Style.fontSizeExtraSmall
-                visible: !teacher.skills || teacher.skills.length === 0
+                visible: !teacher.measured
                 text: qsTr("Noch nichts gemessen. Der Einstufungstest dauert etwa zehn Minuten und sagt dir, womit du anfangen sollst.")
             }
 
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                visible: teacher.measured
+                wrapMode: Text.WordWrap
+                color: Style.highlightColor
+                font.pixelSize: Style.fontSizeSmall
+                text: qsTr("Gemessen am %1 — Aufgaben um %2.")
+                      .arg(teacher.measuredOn).arg(teacher.startDifficulty)
+            }
+
             Repeater {
-                model: teacher.skills
+                model: teacher.measured ? teacher.skills : 0
                 SkillRow { entry: modelData }
+            }
+
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                visible: teacher.measured
+                wrapMode: Text.WordWrap
+                color: Style.secondaryColor
+                font.pixelSize: Style.fontSizeExtraSmall
+                text: qsTr("Fünfundzwanzig Aufgaben reichen nicht, um einzelne Fertigkeiten sicher zu trennen. „Unauffällig“ heißt deshalb meistens: nichts stach heraus — nicht, dass nichts gemessen wurde.")
             }
 
             // ---- Messen ------------------------------------------------
@@ -195,6 +221,7 @@ Page {
 
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
+                visible: !teacher.liveGame
                 text: qsTr("Einstufungstest")
                 enabled: teacher.engineReady
                 onClicked: pageStack.push(Qt.resolvedUrl("PlacementPage.qml"))
@@ -212,6 +239,32 @@ Page {
 
             Item { width: 1; height: Style.paddingMedium }
 
+            // ---- Online spielen ----------------------------------------
+            SectionHeader { text: qsTr("Online spielen") }
+
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                wrapMode: Text.WordWrap
+                color: Style.secondaryColor
+                font.pixelSize: Style.fontSizeExtraSmall
+                text: teacher.liveGame
+                      ? qsTr("Deine Lichess-Partie läuft. Solange sie läuft, ist die Engine aus — nach der Partie sehen wir sie uns an.")
+                      : qsTr("Gegen echte Gegner auf Lichess spielen, und die eigenen Lichess-Partien als Material für die Fehlerdiagnose holen. Freiwillig: alles andere in dieser App funktioniert ohne Konto.")
+            }
+
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: teacher.liveGame ? qsTr("Zurück zur laufenden Partie")
+                                       : qsTr("Lichess")
+                onClicked: {
+                    if (teacher.liveGame)
+                        pageStack.push(Qt.resolvedUrl("OnlineGamePage.qml"))
+                    else
+                        pageStack.push(Qt.resolvedUrl("LichessPage.qml"))
+                }
+            }
+
             // ---- Der Rest ----------------------------------------------
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -221,13 +274,18 @@ Page {
 
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
+                // Hidden, not greyed out, while a Lichess game is running.
+                visible: teacher.analysisAvailable
                 text: qsTr("Letzte Partie auswerten")
-                enabled: teacher.engineReady
                 onClicked: pageStack.push(Qt.resolvedUrl("AnalysisPage.qml"))
             }
 
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
+                // While a Lichess game runs, the board is that game's board and
+                // belongs to OnlineGamePage; a second way in would only invite
+                // moves into the wrong screen.
+                visible: !teacher.liveGame
                 text: qsTr("Freies Brett")
                 onClicked: page.toBoard()
             }

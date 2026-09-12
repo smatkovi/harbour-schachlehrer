@@ -35,6 +35,8 @@
 #include "ItemBank.h"
 #include "Database.h"
 #include "EngineProcess.h"
+#include "GameSync.h"
+#include "Lichess.h"
 #include "Sparring.h"
 #include "core/Card.h"
 #include "core/Placement.h"
@@ -88,6 +90,39 @@ class TeacherEngine : public QObject
     Q_PROPERTY(QVariantList skills READ skills NOTIFY progressChanged)
     Q_PROPERTY(QVariantMap session READ session NOTIFY progressChanged)
     Q_PROPERTY(int dueCards READ dueCards NOTIFY progressChanged)
+    // Whether a placement test was ever finished, and when. Without this the
+    // start page cannot tell "never measured" from "measured, nothing stood out".
+    Q_PROPERTY(bool measured READ measured NOTIFY progressChanged)
+    Q_PROPERTY(QString measuredOn READ measuredOn NOTIFY progressChanged)
+    Q_PROPERTY(int startDifficulty READ startDifficulty NOTIFY progressChanged)
+
+    // --- Lichess (platform.md §3, docs/design.md §8 M8) ----------------------
+    // Everything the online screens need. The app is fully usable with no
+    // account at all — placement test, routine, blunder-check drill and
+    // offline sparring do not touch any of this — and that is deliberate: an
+    // app that needs a login to be useful has missed its own purpose.
+    Q_PROPERTY(int lichessState READ lichessState NOTIFY lichessChanged)
+    Q_PROPERTY(bool lichessLoggedIn READ lichessLoggedIn NOTIFY lichessChanged)
+    Q_PROPERTY(QString lichessAccount READ lichessAccount NOTIFY lichessChanged)
+    Q_PROPERTY(QString lichessMessage READ lichessMessage NOTIFY lichessChanged)
+    Q_PROPERTY(QString lichessAuthUrl READ lichessAuthUrl NOTIFY lichessChanged)
+    Q_PROPERTY(bool lichessConnected READ lichessConnected NOTIFY lichessChanged)
+    Q_PROPERTY(bool lichessSeeking READ lichessSeeking NOTIFY lichessChanged)
+    Q_PROPERTY(QVariantList lichessChallenges READ lichessChallenges NOTIFY lichessChanged)
+    Q_PROPERTY(QVariantMap gameSync READ gameSync NOTIFY lichessChanged)
+
+    // --- the live Lichess game and the fair-play lock (platform.md §3.7) -----
+    // `liveGame` is true exactly while `m_liveGameId` is set. While it is,
+    // there is no engine: the process is terminated, every analysis request is
+    // refused and `analysisAvailable` is false, which is what the pages read
+    // to **hide** the analysis entry rather than grey it out.
+    Q_PROPERTY(QVariantMap onlineGame READ onlineGame NOTIFY onlineGameChanged)
+    Q_PROPERTY(QVariantMap clocks READ clocks NOTIFY clocksChanged)
+    Q_PROPERTY(bool liveGame READ liveGame NOTIFY onlineGameChanged)
+    Q_PROPERTY(QString liveGameId READ liveGameId NOTIFY onlineGameChanged)
+    Q_PROPERTY(bool analysisAvailable READ analysisAvailable NOTIFY engineChanged)
+    Q_PROPERTY(QString fairPlayNotice READ fairPlayNotice CONSTANT)
+    Q_PROPERTY(bool canAnalyseFinishedGame READ canAnalyseFinishedGame NOTIFY onlineGameChanged)
 
     // --- Lösungen durchsehen ------------------------------------------------
     // A measurement you cannot look back at teaches nothing. Every answered
@@ -99,7 +134,7 @@ class TeacherEngine : public QObject
     Q_PROPERTY(QVariantMap review READ review NOTIFY reviewChanged)
 
 public:
-    enum Mode { Idle = 0, Placement = 1, Drill = 2, Sparring = 3, Review = 4 };
+    enum Mode { Idle = 0, Placement = 1, Drill = 2, Sparring = 3, Review = 4, Online = 5 };
     Q_ENUMS(Mode)
 
     // teacher.md §7.5 defaults to Auto; the learner may force it either way.
@@ -148,6 +183,34 @@ public:
     QVariantList skills() const;
     QVariantMap session() const;
     int dueCards() const;
+    bool measured() const { return m_measuredAt > 0; }
+    QString measuredOn() const;
+    int startDifficulty() const;
+
+    int lichessState() const;
+    bool lichessLoggedIn() const;
+    QString lichessAccount() const;
+    QString lichessMessage() const;
+    QString lichessAuthUrl() const;
+    bool lichessConnected() const;
+    bool lichessSeeking() const;
+    QVariantList lichessChallenges() const;
+    QVariantMap gameSync() const;
+    QVariantMap onlineGame() const;
+    QVariantMap clocks() const;
+    // The one instance variable of platform.md §3.7. Everything else about the
+    // fair-play lock is derived from it.
+    bool liveGame() const { return !m_liveGameId.isEmpty(); }
+    QString liveGameId() const { return m_liveGameId; }
+    bool analysisAvailable() const;
+    QString fairPlayNotice() const;
+    bool canAnalyseFinishedGame() const;
+
+    // The client, for the regression tests. tests/test_fairplay.cpp feeds
+    // recorded ndjson through it to make a game start and end without a
+    // network and without an account.
+    Lichess* lichess() const { return m_lichess; }
+    EngineProcess* engine() const { return m_engine; }
 
     Q_INVOKABLE void startPlacement();
     Q_INVOKABLE void startSession();
@@ -158,6 +221,33 @@ public:
     Q_INVOKABLE void skipTask();
     Q_INVOKABLE void analyseCurrentGame();
     Q_INVOKABLE QVariantList lastFindings() const;
+
+    // --- Lichess -------------------------------------------------------------
+    Q_INVOKABLE void lichessLogIn();
+    Q_INVOKABLE void lichessLogOut();
+    Q_INVOKABLE void lichessRefresh();
+    // §3.2: the seek only reaches rapid, classical and correspondence. Blitz
+    // would need a direct challenge and is the wrong format for learning.
+    Q_INVOKABLE void lichessSeek(int minutes, int increment, bool rated);
+    Q_INVOKABLE void lichessSeekCorrespondence(int days, bool rated);
+    Q_INVOKABLE void lichessCancelSeek();
+    Q_INVOKABLE void lichessChallengeAi(int level, int minutes, int increment);
+    Q_INVOKABLE void lichessAcceptChallenge(const QString& id);
+    Q_INVOKABLE void lichessDeclineChallenge(const QString& id);
+    Q_INVOKABLE void lichessOfferDraw();
+    Q_INVOKABLE void lichessAnswerDraw(bool accept);
+    Q_INVOKABLE void lichessRequestTakeback();
+    Q_INVOKABLE void lichessAnswerTakeback(bool accept);
+    Q_INVOKABLE void lichessResign();
+    Q_INVOKABLE void lichessAbort();
+    Q_INVOKABLE void lichessClaimVictory();
+    Q_INVOKABLE void lichessSyncGames();
+    // The game the sync brought in last, analysed **after** it ended — which
+    // is the allowed and the whole point (platform.md §3.7, GameSync.h).
+    Q_INVOKABLE void analyseSyncedGame();
+    // Called from QML when Qt.application.state goes back to active: the
+    // streams may have died while the app was in the background.
+    Q_INVOKABLE void appActivated();
 
     // The drill (§7.5). `dangerous` holds the indices into
     // blunderCheck["moves"] that the learner marked; the held move is released
@@ -186,6 +276,9 @@ signals:
     void routineChanged();
     void blunderCheckChanged();
     void drillModeChanged();
+    void lichessChanged();
+    void onlineGameChanged();
+    void clocksChanged();
 
 private slots:
     void onEngineResult(const schach::EngineResult& result);
@@ -194,9 +287,27 @@ private slots:
     void onAnalysisProgress(int done, int total);
     void onChanceMissed(const QString& fen, int errorClass);
     void onOpponentTurn();
+    void onLichessChanged();
+    void onLichessFailed(const QString& sentence);
+    void onOnlineGameStarted(const QString& gameId);
+    void onOnlineGameUpdated();
+    void onOnlineGameFinished(const QString& gameId, const QString& status, const QString& winner);
+    void onClockTick();
+    void onSyncStored(qint64 databaseId, const QString& initialFen,
+                      const QStringList& moves, bool learnerIsWhite);
+    void onSyncFinished(int imported);
 
 private:
     void setMode(Mode mode);
+    // platform.md §3.7, the only two places `m_liveGameId` ever changes.
+    // beginLiveGame() terminates the engine process — not pauses it — and
+    // endLiveGame() brings it back once the game is over.
+    void beginLiveGame(const QString& gameId);
+    void endLiveGame();
+    // True when a request into the engine or the tablebase has to be refused,
+    // and it says so in a sentence instead of doing nothing.
+    bool refusedWhileLive();
+    void syncBoardToOnlineGame();
     void setPrompt(const QString& prompt);
     // `cls` adds the link back of §6.6: which question of the routine would
     // have caught this. ErrorClass::None leaves the field empty.
@@ -245,6 +356,7 @@ private:
     };
     QVector<AnsweredItem> m_answered;
     int m_reviewIndex;        // -1 while the test is running
+    qint64 m_measuredAt;      // when the placement test last finished, 0 = never
     QString m_taskFen;        // the position of the running task, for the record
     QString m_lastAnswer;     // the move just played, empty when skipped
     // What was on the board when the review was entered, so leaving it again
@@ -257,6 +369,7 @@ private:
 
     void rememberAnswer(bool correct);
     void showAnswered(int index);
+    QVector<core::Card> starterCards(core::Dimension dimension) const;
     QStringList m_usedItems;   // one position is never asked twice in a run
     core::SkillState m_skill;
     core::SessionPlan m_sessionPlan;
@@ -283,6 +396,35 @@ private:
     core::ErrorHistory m_history;
     QString m_engineMessage;
     qint64 m_currentGameId;
+
+    // --- Lichess -------------------------------------------------------------
+    Lichess* m_lichess;
+    GameSync* m_sync;
+    QTimer* m_clockTimer;
+    // **The** instance variable of platform.md §3.7. Set while a Lichess game
+    // is running, empty otherwise. Nothing else decides whether the engine may
+    // run.
+    QString m_liveGameId;
+    qint64 m_clockWhiteMs;
+    qint64 m_clockBlackMs;
+    qint64 m_clockStampMs;
+    bool m_clockRunning;
+    bool m_clockWhiteToMove;
+    // Where the game on the board came from, so that the record it is stored
+    // under is the truth and not "Trainingsgegner" for every game.
+    QString m_gameSource;
+    QString m_gameExternalId;
+    QString m_gameWhiteName;
+    QString m_gameBlackName;
+    // The last game the download brought in (GameSync), kept so it can be
+    // analysed after the fact.
+    qint64 m_syncedGameId;
+    QString m_syncedInitialFen;
+    QStringList m_syncedMoves;
+    bool m_syncedLearnerIsWhite;
+    int m_syncSeen;
+    int m_syncImported;
+    QString m_syncMessage;
 };
 
 } // namespace schach

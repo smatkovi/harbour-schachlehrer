@@ -29,6 +29,11 @@ PlacementPage 1.0 PlacementPage.qml
 AnalysisPage 1.0 AnalysisPage.qml
 CardsPage 1.0 CardsPage.qml
 RulesPage 1.0 RulesPage.qml
+# Lichess (platform.md §3, design.md §8 M8). The live game has a page of its
+# own because it is a different state of the machine: no engine, no analysis,
+# no hint — see LichessPage.qml and OnlineGamePage.qml.
+LichessPage 1.0 LichessPage.qml
+OnlineGamePage 1.0 OnlineGamePage.qml
 SettingsPage 1.0 SettingsPage.qml
 AboutPage 1.0 AboutPage.qml
 CoverPage 1.0 CoverPage.qml

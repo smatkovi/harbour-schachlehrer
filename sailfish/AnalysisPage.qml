@@ -54,7 +54,11 @@ Page {
         PullDownMenu {
             MenuItem {
                 text: qsTr("Noch einmal auswerten")
-                enabled: teacher.engineReady && !teacher.thinking
+                // Hidden, not greyed out, while a Lichess game is running —
+                // platform.md §3.7 says the entry has to be gone, and there is
+                // a sentence on the game page that says why.
+                visible: teacher.analysisAvailable
+                enabled: !teacher.thinking
                 onClicked: teacher.analyseCurrentGame()
             }
         }

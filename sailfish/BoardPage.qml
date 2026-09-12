@@ -51,7 +51,9 @@ Page {
         PullDownMenu {
             MenuItem {
                 text: qsTr("Partie auswerten")
-                enabled: teacher.engineReady
+                // platform.md §3.7: while a Lichess game runs this entry is
+                // not disabled, it is not there.
+                visible: teacher.analysisAvailable
                 onClicked: {
                     teacher.analyseCurrentGame()
                     pageStack.push(Qt.resolvedUrl("AnalysisPage.qml"))
@@ -101,7 +103,10 @@ Page {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: page.width - 2 * Style.paddingSmall
                 height: width
-                interactive: teacher.gameResult === "" && !teacher.thinking && !page.checking
+                // A Lichess game is played on OnlineGamePage, with its clocks
+                // and its rules; this board does not take moves for it.
+                interactive: teacher.gameResult === "" && !teacher.thinking
+                             && !page.checking && !teacher.liveGame
 
                 onMoveRejected: {
                     // A refused move is not an error message; it is simply not
@@ -143,6 +148,10 @@ Page {
 
                 Button {
                     text: qsTr("Hinweis")
+                    // A hint during a rated Lichess game is exactly the
+                    // "move recommendation from software" the fair-play rules
+                    // forbid (§3.7), so it disappears with the engine.
+                    visible: !teacher.liveGame
                     enabled: teacher.engineReady && !teacher.thinking
                     onClicked: teacher.requestHint()
                 }
@@ -150,9 +159,8 @@ Page {
 
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
-                visible: teacher.gameResult !== ""
+                visible: teacher.gameResult !== "" && teacher.analysisAvailable
                 text: qsTr("Partie auswerten")
-                enabled: teacher.engineReady
                 onClicked: {
                     teacher.analyseCurrentGame()
                     pageStack.push(Qt.resolvedUrl("AnalysisPage.qml"))

@@ -110,6 +110,12 @@ set(SCHACH_ENGINE
 
 if(EXISTS ${SCHACH_ENGINE})
     install(PROGRAMS ${SCHACH_ENGINE} DESTINATION ${SCHACH_DATADIR}/bin)
+    # The same binary under /usr/bin. chess-spec/platform.md §7.1 names an exec
+    # from /usr/share as the one thing that could sink the process
+    # architecture under Sailjail; this is the documented way out, and the app
+    # prefers it. It also settles rpmlint's arch-dependent-file complaint.
+    install(PROGRAMS ${SCHACH_ENGINE} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+            RENAME ${SCHACH_APP}-engine)
     message(STATUS "${SCHACH_APP}: engine ${SCHACH_ENGINE}")
 elseif(SCHACH_REQUIRE_ENGINE)
     message(FATAL_ERROR
@@ -219,6 +225,12 @@ if(SCHACH_BUILD_TESTS)
         test_perft test_perft_epd test_position test_san test_pgn
         test_uci_parser test_taxonomy test_winprob test_skill
         test_placement test_srs test_card)
+    # These two need the Qt layer, not only the Qt-free core: the fair-play
+    # lock of platform.md §3.7 lives in EngineProcess and TeacherEngine, and
+    # the Lichess protocol lives in Lichess/GameSync. They link Network and Sql
+    # as well and get SCHACH_SOURCE_DIR so test_fairplay can grep the tree for
+    # the Bot API upgrade endpoint that must not exist (§3.1).
+    set(SCHACH_QT_TESTS test_fairplay test_lichess)
     # Anything else the other author drops into tests/ is picked up as well.
     file(GLOB SCHACH_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_*.cpp)
     foreach(src IN LISTS SCHACH_TEST_SOURCES)
@@ -230,15 +242,25 @@ if(SCHACH_BUILD_TESTS)
 
     foreach(t IN LISTS SCHACH_TESTS)
         if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/${t}.cpp)
-            add_executable(${t} tests/${t}.cpp ${SCHACH_CORE_SOURCES})
+            list(FIND SCHACH_QT_TESTS ${t} schach_qt_test)
+            if(schach_qt_test GREATER -1)
+                add_executable(${t} tests/${t}.cpp ${SCHACH_CORE_SOURCES} ${SCHACH_QT_SOURCES})
+            else()
+                add_executable(${t} tests/${t}.cpp ${SCHACH_CORE_SOURCES})
+            endif()
             target_include_directories(${t} PRIVATE
                 ${CMAKE_CURRENT_SOURCE_DIR}/src
                 ${CMAKE_CURRENT_SOURCE_DIR}/third_party/chess-library
                 ${CMAKE_CURRENT_SOURCE_DIR}/third_party/chess-library/include
                 ${CMAKE_CURRENT_SOURCE_DIR}/third_party/chess-library/src)
             target_compile_definitions(${t} PRIVATE
-                SCHACH_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-            target_link_libraries(${t} Qt5::Core)
+                SCHACH_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+                SCHACH_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+            if(schach_qt_test GREATER -1)
+                target_link_libraries(${t} Qt5::Core Qt5::Network Qt5::Sql)
+            else()
+                target_link_libraries(${t} Qt5::Core)
+            endif()
             add_test(NAME ${t} COMMAND ${t})
         else()
             message(STATUS "${SCHACH_APP}: tests/${t}.cpp is not there yet, skipping it")

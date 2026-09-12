@@ -42,6 +42,7 @@ EngineProcess::EngineProcess(QObject* parent)
     , m_threads(1)
     , m_ready(false)
     , m_handshakeDone(false)
+    , m_fairPlayLock(false)
     , m_nextId(0)
 {
     qRegisterMetaType<schach::EngineResult>("schach::EngineResult");
@@ -67,12 +68,83 @@ void EngineProcess::setEvalFile(const QString& path) { m_evalFile = path; }
 void EngineProcess::setHashMb(int megabytes) { m_hashMb = megabytes > 0 ? megabytes : 16; }
 void EngineProcess::setThreads(int threads) { m_threads = threads > 0 ? threads : 1; }
 
-bool EngineProcess::available() const
+bool EngineProcess::binaryPresent() const
 {
     if (m_enginePath.isEmpty())
         return false;
     const QFileInfo info(m_enginePath);
     return info.exists() && info.isFile() && info.isExecutable();
+}
+
+bool EngineProcess::available() const
+{
+    // platform.md §3.7: while a Lichess game is running there is no engine, as
+    // far as the rest of the app is concerned. Everything that asks whether it
+    // may use the engine asks here — Analyser::start(), the sparring opponent,
+    // the hint — so one flag closes all of them.
+    if (m_fairPlayLock)
+        return false;
+    return binaryPresent();
+}
+
+QString EngineProcess::fairPlayReason() const
+{
+    return tr("Die Engine ist aus, solange eine Lichess-Partie läuft. Eine "
+              "Engine-Auskunft während der Partie wäre nach den Fair-Play-Regeln "
+              "von Lichess Betrug — und markiert würde dein Konto, nicht die App.");
+}
+
+bool EngineProcess::processRunning() const
+{
+    return m_process->state() != QProcess::NotRunning;
+}
+
+bool EngineProcess::tablebaseAvailable() const
+{
+    // The tablebase answer comes out of the engine (SyzygyPath), and the
+    // fair-play table of platform.md §3.7 forbids it in exactly the same row
+    // as the engine. Same lock, no exception for correspondence either: the
+    // table says "nein" for the tablebase in both Board-API rows.
+    if (m_fairPlayLock)
+        return false;
+    return !m_syzygyPath.isEmpty() && available() && m_ready;
+}
+
+int EngineProcess::probeTablebase(const QString& fen, const QVariant& tag)
+{
+    if (m_fairPlayLock)
+        return 0;
+    if (!tablebaseAvailable())
+        return 0;
+    // A tablebase probe is an ordinary short search: the engine answers out of
+    // Syzygy when the position is in it. The point of the separate entry is
+    // that the lock can be proven on this path by itself.
+    return analyseMovetime(fen, QStringList(), 200, 1, tag);
+}
+
+void EngineProcess::setFairPlayLock(bool locked)
+{
+    if (m_fairPlayLock == locked)
+        return;
+    m_fairPlayLock = locked;
+    if (!locked)
+        return;
+
+    // Not paused — gone. A paused process is one signal away from answering a
+    // question it must not answer; a terminated one is not.
+    m_queue.clear();
+    if (m_current.id != 0)
+        finishCurrent(false, fairPlayReason());
+    m_watchdog->stop();
+    if (m_process->state() != QProcess::NotRunning) {
+        send(QString::fromStdString(core::uciproto::cmdQuit()));
+        if (!m_process->waitForFinished(kKillMs)) {
+            m_process->kill();
+            m_process->waitForFinished(kKillMs);
+        }
+    }
+    m_handshakeDone = false;
+    setReady(false);
 }
 
 void EngineProcess::setReady(bool ready)
@@ -85,6 +157,13 @@ void EngineProcess::setReady(bool ready)
 
 bool EngineProcess::start()
 {
+    if (m_fairPlayLock) {
+        // The last door. Even an explicit start() while a rated game is
+        // running is refused, and says why.
+        m_lastError = fairPlayReason();
+        emit failed(m_lastError);
+        return false;
+    }
     if (m_process->state() != QProcess::NotRunning)
         return true;
     if (!available()) {
@@ -99,7 +178,14 @@ bool EngineProcess::start()
     m_handshakeDone = false;
     m_process->start(m_enginePath, QStringList());
     if (!m_process->waitForStarted(3000)) {
-        m_lastError = tr("Die Schach-Engine lässt sich nicht starten.");
+        // "It does not start" is useless to whoever has to fix it. Say what the
+        // system said, and about which file.
+        QString detail = m_process->errorString();
+        if (m_process->error() == QProcess::FailedToStart)
+            detail = tr("darf nicht ausgeführt werden oder es fehlt eine Bibliothek (%1)")
+                         .arg(detail);
+        m_lastError = tr("Die Schach-Engine lässt sich nicht starten: %1 — %2")
+                          .arg(m_enginePath, detail);
         emit failed(m_lastError);
         return false;
     }
@@ -139,7 +225,7 @@ void EngineProcess::send(const QString& line)
 int EngineProcess::analyseMovetime(const QString& fen, const QStringList& moves, int movetimeMs,
                                    int multipv, const QVariant& tag)
 {
-    if (!available())
+    if (m_fairPlayLock || !available())
         return 0;
     EngineRequest request;
     request.id = ++m_nextId;
@@ -156,7 +242,7 @@ int EngineProcess::analyseMovetime(const QString& fen, const QStringList& moves,
 int EngineProcess::analyseNodes(const QString& fen, const QStringList& moves, qint64 nodes,
                                 int multipv, const QVariant& tag)
 {
-    if (!available())
+    if (m_fairPlayLock || !available())
         return 0;
     EngineRequest request;
     request.id = ++m_nextId;
@@ -174,6 +260,10 @@ void EngineProcess::startNext()
 {
     // Strictly serial: one `go` at a time. UCI has no request ids, so two
     // overlapping searches cannot be told apart.
+    if (m_fairPlayLock) {
+        m_queue.clear();
+        return;
+    }
     if (m_current.id != 0 || m_queue.isEmpty() || !m_ready)
         return;
 
@@ -300,7 +390,12 @@ void EngineProcess::finishCurrent(bool ok, const QString& error)
 void EngineProcess::onWatchdog()
 {
     if (!m_handshakeDone) {
-        m_lastError = tr("Die Schach-Engine antwortet nicht.");
+        // Whatever the engine managed to say before falling silent is the most
+        // useful thing we have; usually it is a missing network file.
+        const QString noise = QString::fromLatin1(m_process->readAllStandardError()).trimmed();
+        m_lastError = noise.isEmpty()
+                ? tr("Die Schach-Engine antwortet nicht (%1).").arg(m_enginePath)
+                : tr("Die Schach-Engine antwortet nicht: %1").arg(noise.left(200));
         m_process->kill();
         setReady(false);
         emit failed(m_lastError);

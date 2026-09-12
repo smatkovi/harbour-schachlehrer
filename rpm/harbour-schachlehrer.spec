@@ -173,6 +173,7 @@ exit 0
 %files
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
+%attr(0755,root,root) %{_bindir}/%{name}-engine
 
 %dir %{_datadir}/%{name}
 %dir %{_datadir}/%{name}/qml
