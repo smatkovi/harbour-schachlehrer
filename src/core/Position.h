@@ -29,7 +29,12 @@
 // Qt-free and free of I/O, like the Tarock core and for the same reason: it
 // can be checked against fixed inputs.
 
+// Qt's moc cannot parse this header (it stops at a nested namespace in
+// chess.hpp), and it does not need to: nothing in the Qt classes that include
+// Position.h exposes a chess-library type in a signal, slot or property.
+#ifndef Q_MOC_RUN
 #include <chess.hpp>
+#endif
 
 #include <cstdint>
 #include <string>

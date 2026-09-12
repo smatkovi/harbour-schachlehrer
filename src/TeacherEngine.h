@@ -1,0 +1,191 @@
+/*
+    Copyright (C) 2026 smatkovi
+
+    This file is part of harbour-schachlehrer.
+
+    harbour-schachlehrer is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    harbour-schachlehrer is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with harbour-schachlehrer. If not, see <https://www.gnu.org/licenses/>.
+
+    SPDX-License-Identifier: GPL-3.0-or-later
+*/
+#ifndef SCHACH_TEACHERENGINE_H
+#define SCHACH_TEACHERENGINE_H
+
+// The single QObject that QML sees (docs/design.md §4, context property
+// `teacher`). Everything else — the Qt-free core, the engine process, the
+// database, the analyser, the sparring opponent — hangs off this and is
+// invisible from QML, exactly as in harbour-tarock.
+//
+// The one rule that shapes this whole class: **no evaluation number without a
+// sentence** (teacher.md §6.6). `feedback` always carries `text`; `cp` and
+// `wp` are optional and exist for diagnostics, not for display, and `key`
+// names the rule the sentence came from so the UI can link to the explanation.
+
+#include "Analyser.h"
+#include "Database.h"
+#include "EngineProcess.h"
+#include "Sparring.h"
+#include "core/Card.h"
+#include "core/Placement.h"
+#include "core/Position.h"
+#include "core/Skill.h"
+
+#include <QElapsedTimer>
+#include <QObject>
+#include <QString>
+#include <QTimer>
+#include <QVariantList>
+#include <QVariantMap>
+#include <QVector>
+
+namespace schach {
+
+class TeacherEngine : public QObject
+{
+    Q_OBJECT
+
+    // --- board --------------------------------------------------------------
+    Q_PROPERTY(QString fen READ fen NOTIFY positionChanged)
+    Q_PROPERTY(QVariantList squares READ squares NOTIFY positionChanged)
+    Q_PROPERTY(QVariantList legalTargets READ legalTargets NOTIFY selectionChanged)
+    Q_PROPERTY(int selectedSquare READ selectedSquare WRITE setSelectedSquare NOTIFY selectionChanged)
+    Q_PROPERTY(bool flipped READ flipped WRITE setFlipped NOTIFY boardChanged)
+    Q_PROPERTY(QVariantList moveList READ moveList NOTIFY positionChanged)
+    Q_PROPERTY(QString lastMove READ lastMove NOTIFY positionChanged)
+    Q_PROPERTY(bool whiteToMove READ whiteToMove NOTIFY positionChanged)
+    Q_PROPERTY(QString gameResult READ gameResult NOTIFY positionChanged)
+
+    // --- mode ---------------------------------------------------------------
+    Q_PROPERTY(int mode READ mode NOTIFY modeChanged)
+    Q_PROPERTY(QString prompt READ prompt NOTIFY taskChanged)
+    Q_PROPERTY(QVariantMap task READ task NOTIFY taskChanged)
+    Q_PROPERTY(QVariantMap feedback READ feedback NOTIFY feedbackChanged)
+    Q_PROPERTY(bool engineReady READ engineReady NOTIFY engineChanged)
+    Q_PROPERTY(bool thinking READ thinking NOTIFY engineChanged)
+
+    // --- progress -----------------------------------------------------------
+    Q_PROPERTY(QVariantList skills READ skills NOTIFY progressChanged)
+    Q_PROPERTY(QVariantMap session READ session NOTIFY progressChanged)
+    Q_PROPERTY(int dueCards READ dueCards NOTIFY progressChanged)
+
+public:
+    enum Mode { Idle = 0, Placement = 1, Drill = 2, Sparring = 3, Review = 4 };
+    Q_ENUMS(Mode)
+
+    explicit TeacherEngine(QObject* parent = 0);
+    ~TeacherEngine();
+
+    // Called once from main() before QML is loaded; both may be empty, and the
+    // app then runs without engine and with an in-memory database.
+    void setPaths(const QString& enginePath, const QString& syzygyPath,
+                  const QString& evalFile, const QString& databasePath);
+
+    QString fen() const;
+    QVariantList squares() const;
+    QVariantList legalTargets() const;
+    int selectedSquare() const { return m_selected; }
+    void setSelectedSquare(int square);
+    bool flipped() const { return m_flipped; }
+    void setFlipped(bool flipped);
+    QVariantList moveList() const;
+    QString lastMove() const;
+    bool whiteToMove() const;
+    QString gameResult() const;
+
+    int mode() const { return m_mode; }
+    QString prompt() const { return m_prompt; }
+    QVariantMap task() const { return m_task; }
+    QVariantMap feedback() const { return m_feedback; }
+    bool engineReady() const;
+    bool thinking() const;
+
+    QVariantList skills() const;
+    QVariantMap session() const;
+    int dueCards() const;
+
+    Q_INVOKABLE void startPlacement();
+    Q_INVOKABLE void startSession();
+    Q_INVOKABLE void startSparring(int handicap);
+    Q_INVOKABLE bool play(int fromSquare, int toSquare, const QString& promotion = QString());
+    Q_INVOKABLE void takeBack();
+    Q_INVOKABLE void requestHint();
+    Q_INVOKABLE void skipTask();
+    Q_INVOKABLE void analyseCurrentGame();
+    Q_INVOKABLE QVariantList lastFindings() const;
+
+signals:
+    void positionChanged();
+    void selectionChanged();
+    void boardChanged();
+    void modeChanged();
+    void taskChanged();
+    void feedbackChanged();
+    void engineChanged();
+    void progressChanged();
+
+private slots:
+    void onEngineResult(const schach::EngineResult& result);
+    void onEngineFailed(const QString& reason);
+    void onAnalysisFinished(const QVector<core::Finding>& findings);
+    void onAnalysisProgress(int done, int total);
+    void onChanceMissed(const QString& fen, int errorClass);
+    void onOpponentTurn();
+
+private:
+    void setMode(Mode mode);
+    void setPrompt(const QString& prompt);
+    void setFeedback(const QString& text, const QString& key, const core::Score* score = 0);
+    void clearFeedback();
+    void startNewGame(bool learnerPlaysWhite);
+    void askOpponent();
+    void loadNextTask();
+    void finishDrillTask(bool correct, int milliseconds);
+    void presentCard(const core::Card& card);
+    qint64 today() const;
+    int learnerElo() const;
+
+    core::Position m_position;
+    EngineProcess* m_engine;
+    Database* m_database;
+    Analyser* m_analyser;
+    // Qualified: the enumerator `Sparring` above would otherwise shadow the class.
+    ::schach::Sparring* m_sparring;
+    QTimer* m_opponentTimer;
+    QElapsedTimer m_taskClock;
+
+    core::Placement* m_placement;
+    core::SkillState m_skill;
+    core::SessionPlan m_sessionPlan;
+    QVector<core::Card> m_sessionCards;
+    int m_sessionIndex;
+    int m_analysisDone;
+    int m_analysisTotal;
+
+    QVector<core::Finding> m_findings;
+    QString m_solutionUci;
+    QString m_currentCardId;
+    int m_hintLevel;
+    bool m_learnerIsWhite;
+    bool m_flipped;
+    int m_selected;
+    Mode m_mode;
+    QString m_prompt;
+    QVariantMap m_task;
+    QVariantMap m_feedback;
+    QString m_engineMessage;
+    qint64 m_currentGameId;
+};
+
+} // namespace schach
+
+#endif // SCHACH_TEACHERENGINE_H

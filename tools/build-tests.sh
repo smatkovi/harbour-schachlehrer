@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$ROOT/build-tests}"
 mkdir -p "$OUT"
 
-CXXFLAGS="-std=c++17 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wno-unused-parameter"
+CXXFLAGS="-std=c++17 -O2 -g -Wall -Wextra -Wpedantic -Wshadow -Wno-unused-parameter"
 INC="-I$ROOT/src -isystem $ROOT/third_party/chess-library"
 
 CORE="$ROOT/src/core/Position.cpp $ROOT/src/core/Uci.cpp $ROOT/src/core/WinProb.cpp \
