@@ -65,9 +65,6 @@ Sparring::Sparring(QObject* parent)
     , m_lastMistakePly(-100)
     , m_pendingClass(core::ErrorClass::None)
     , m_pendingAge(0)
-    , m_checkEvery(3)
-    , m_checkStreak(0)
-    , m_movesSinceCheck(0)
     , m_rng(20260912u)
 {
 }
@@ -110,9 +107,11 @@ void Sparring::reset(int learnerElo, const QVector<core::ErrorClass>& classesThe
     m_ply = 0;
     m_lastMistakePly = -100;
     clearPending();
-    m_checkEvery = 3;
-    m_checkStreak = 0;
-    m_movesSinceCheck = 0;
+    // The learner's own choice survives a new game; only the schedule starts
+    // over (§7.5 is about one sitting, the setting is not).
+    const core::DrillMode mode = m_check.mode;
+    m_check = core::BlunderCheckSchedule();
+    m_check.mode = mode;
     m_rng.seed(seed);
 }
 
@@ -301,40 +300,48 @@ QStringList Sparring::threatsToCheck(const core::Position& position)
     return out;
 }
 
-bool Sparring::blunderCheckDue() const
+QVector<BlunderCheckItem> Sparring::blunderCheckList(const core::Position& before,
+                                                    const QString& intendedUci)
 {
-    if (m_checkEvery <= 0)
-        return false;
-    return m_movesSinceCheck >= m_checkEvery;
-}
+    // §7.5, straight out of §1.2.2 again: his checks and his captures with
+    // SEE > 0 after the move the learner wants to make. A check stays in the
+    // list whatever its SEE, because a check he has to answer is exactly the
+    // move that hides the fork behind it.
+    QVector<BlunderCheckItem> out;
+    const std::string uci = intendedUci.toStdString();
+    if (!before.isLegal(uci))
+        return out;
+    const core::Position after = before.after(uci);
+    const bool learnerIsWhite = before.whiteToMove();
 
-void Sparring::noteMovePlayed() { ++m_movesSinceCheck; }
+    const std::vector<std::string> loud = after.checksAndCaptures();
+    for (std::size_t i = 0; i < loud.size(); ++i) {
+        const std::string& move = loud[i];
+        const bool capture = after.isCapture(move);
+        const int see = after.see(move);
+        if (capture && see <= 0)
+            continue;
 
-void Sparring::noteBlunderCheck(bool correct)
-{
-    m_movesSinceCheck = 0;
-    if (!correct) {
-        m_checkStreak = 0;
-        return;
+        BlunderCheckItem item;
+        item.uci = QString::fromStdString(move);
+        item.san = QString::fromStdString(after.sanOf(move));
+        // Dangerous means: it costs something. Either the move itself wins
+        // material, or it is a check after which one of the learner's pieces
+        // can be taken — the discovered attack that the check pays for.
+        item.dangerous = see > 0;
+        if (!item.dangerous && after.givesCheck(move)) {
+            const core::Position afterCheck = after.after(move);
+            item.dangerous = !afterCheck.hanging(learnerIsWhite).empty()
+                    || afterCheck.gameOver();
+        }
+        out.append(item);
     }
-    if (++m_checkStreak < 3)
-        return;
-    m_checkStreak = 0;
-    // The scaffold fades: every 3rd -> every 5th -> every 8th -> off. The
-    // point is that the routine becomes internal and the scaffold disappears.
-    if (m_checkEvery == 3)
-        m_checkEvery = 5;
-    else if (m_checkEvery == 5)
-        m_checkEvery = 8;
-    else
-        m_checkEvery = 0;
+    return out;
 }
 
 void Sparring::requireBlunderCheck()
 {
-    m_checkEvery = 3;
-    m_checkStreak = 0;
-    m_movesSinceCheck = m_checkEvery;
+    m_check.bringBack();
 }
 
 } // namespace schach

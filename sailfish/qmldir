@@ -15,6 +15,9 @@ Piece 1.0 Piece.qml
 # Shared strips: the rule "never a number without a sentence" lives in
 # FeedbackPanel, the "engine missing is a normal state" rule in EngineBanner.
 FeedbackPanel 1.0 FeedbackPanel.qml
+# „Was frage ich mich?" and the blunder-check drill (teacher.md §6.6, §7.5).
+RoutinePanel 1.0 RoutinePanel.qml
+BlunderCheckOverlay 1.0 BlunderCheckOverlay.qml
 EngineBanner 1.0 EngineBanner.qml
 ThinkingIndicator 1.0 ThinkingIndicator.qml
 SkillRow 1.0 SkillRow.qml

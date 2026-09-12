@@ -39,6 +39,7 @@
 #include "core/Card.h"
 #include "core/Placement.h"
 #include "core/Position.h"
+#include "core/Routine.h"
 #include "core/Skill.h"
 
 #include <QElapsedTimer>
@@ -74,6 +75,15 @@ class TeacherEngine : public QObject
     Q_PROPERTY(bool engineReady READ engineReady NOTIFY engineChanged)
     Q_PROPERTY(bool thinking READ thinking NOTIFY engineChanged)
 
+    // --- Was frage ich mich? (teacher.md §6.6, §7.5) -------------------------
+    // The thinking routine: the ordered list of questions, personalised from
+    // the learner's own error record, and the blunder-check drill that trains
+    // the two of them he needs most. `routine` is what the panel on the board
+    // page shows; `blunderCheck` is empty unless the drill is holding a move.
+    Q_PROPERTY(QVariantList routine READ routine NOTIFY routineChanged)
+    Q_PROPERTY(QVariantMap blunderCheck READ blunderCheck NOTIFY blunderCheckChanged)
+    Q_PROPERTY(int drillMode READ drillMode WRITE setDrillMode NOTIFY drillModeChanged)
+
     // --- progress -----------------------------------------------------------
     Q_PROPERTY(QVariantList skills READ skills NOTIFY progressChanged)
     Q_PROPERTY(QVariantMap session READ session NOTIFY progressChanged)
@@ -91,6 +101,10 @@ class TeacherEngine : public QObject
 public:
     enum Mode { Idle = 0, Placement = 1, Drill = 2, Sparring = 3, Review = 4 };
     Q_ENUMS(Mode)
+
+    // teacher.md §7.5 defaults to Auto; the learner may force it either way.
+    enum DrillSetting { DrillAuto = 0, DrillAlways = 1, DrillNever = 2 };
+    Q_ENUMS(DrillSetting)
 
     explicit TeacherEngine(QObject* parent = 0);
     ~TeacherEngine();
@@ -126,6 +140,11 @@ public:
     bool engineReady() const;
     bool thinking() const;
 
+    QVariantList routine() const;
+    QVariantMap blunderCheck() const { return m_blunderCheck; }
+    int drillMode() const;
+    void setDrillMode(int mode);
+
     QVariantList skills() const;
     QVariantMap session() const;
     int dueCards() const;
@@ -139,6 +158,13 @@ public:
     Q_INVOKABLE void skipTask();
     Q_INVOKABLE void analyseCurrentGame();
     Q_INVOKABLE QVariantList lastFindings() const;
+
+    // The drill (§7.5). `dangerous` holds the indices into
+    // blunderCheck["moves"] that the learner marked; the held move is released
+    // afterwards either way — the drill teaches, it does not punish.
+    Q_INVOKABLE void answerBlunderCheck(const QVariantList& dangerous);
+    // Let the held move go without answering (the learner may always play).
+    Q_INVOKABLE void skipBlunderCheck();
 
     // Step through the answered items. reviewPrevious() from the live test
     // enters the review at the item just answered; endReview() returns to it.
@@ -157,6 +183,9 @@ signals:
     void engineChanged();
     void progressChanged();
     void reviewChanged();
+    void routineChanged();
+    void blunderCheckChanged();
+    void drillModeChanged();
 
 private slots:
     void onEngineResult(const schach::EngineResult& result);
@@ -169,7 +198,17 @@ private slots:
 private:
     void setMode(Mode mode);
     void setPrompt(const QString& prompt);
-    void setFeedback(const QString& text, const QString& key, const core::Score* score = 0);
+    // `cls` adds the link back of §6.6: which question of the routine would
+    // have caught this. ErrorClass::None leaves the field empty.
+    void setFeedback(const QString& text, const QString& key, const core::Score* score = 0,
+                     core::ErrorClass cls = core::ErrorClass::None);
+    // The learner's error record, read from the database (§3.2 b window).
+    void reloadHistory();
+    core::RoutineView currentRoutine() const;
+    // §7.5: hold the move, ask, release.
+    bool beginBlunderCheck(const QString& uci);
+    void finishBlunderCheck(bool correct);
+    void playInSparring(const std::string& uci);
     void clearFeedback();
     void startNewGame(bool learnerPlaysWhite);
     void askOpponent();
@@ -237,6 +276,11 @@ private:
     QString m_prompt;
     QVariantMap m_task;
     QVariantMap m_feedback;
+    // §7.5: the move the drill is holding, and what it asked about.
+    QString m_heldMove;
+    QVariantMap m_blunderCheck;
+    QVector<schach::BlunderCheckItem> m_checkItems;
+    core::ErrorHistory m_history;
     QString m_engineMessage;
     qint64 m_currentGameId;
 };

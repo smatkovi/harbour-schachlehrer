@@ -30,6 +30,7 @@ harbour-schachlehrer/
 │   ├─ Skill.h/.cpp     die sechs Dimensionen, Schätzung und Häufungsklassen (§3)
 │   ├─ Placement.h/.cpp der adaptive Einstufungstest (§4), Elo/Rasch
 │   ├─ Srs.h/.cpp       FSRS-Planung, Kartenlebenslauf (§5)
+│   ├─ Routine.h/.cpp   „Was frage ich mich?" — die Denkroutine (§6.6, §7.5)
 │   └─ Card.h/.cpp      eine Übungskarte: Stellung, Muster, Herkunft, Termin
 ├─ src/                 Qt-Schicht
 │   ├─ EngineProcess.*  QProcess + UCI, ein Prozess, serielle Anfragen, Zeitbudget
@@ -40,7 +41,7 @@ harbour-schachlehrer/
 ├─ sailfish/            Silica-UI, Style-Singleton wie in harbour-tarock
 ├─ third_party/         Stockfish-Quellen + der Small-Net-Patch, cburnett-SVG (BSD-3)
 ├─ assets/syzygy/       3+4 Steine, WDL und DTZ, 70 Dateien, 4,2 MB
-├─ tests/               perft, UCI-Parser, Taxonomie, FSRS, Einstufung
+├─ tests/               perft, UCI-Parser, Taxonomie, FSRS, Einstufung, Routine
 └─ rpm/harbour-schachlehrer.spec
 ```
 
@@ -125,6 +126,38 @@ class TeacherEngine : public QObject {
     Q_INVOKABLE QVariantList lastFindings() const;
 };
 ```
+
+### 4.1 Die Denkroutine
+
+```cpp
+Q_PROPERTY(QVariantList routine READ routine NOTIFY routineChanged)
+Q_PROPERTY(QVariantMap blunderCheck READ blunderCheck NOTIFY blunderCheckChanged)
+Q_PROPERTY(int drillMode READ drillMode WRITE setDrillMode NOTIFY drillModeChanged)
+Q_INVOKABLE void answerBlunderCheck(const QVariantList& dangerous);
+Q_INVOKABLE void skipBlunderCheck();
+```
+
+`src/core/Routine.{h,cpp}` hält den Fragenkatalog: zehn Fragen, aus den
+übertragbaren Hinweisen von `teacher.md` §6.6 gewonnen (wo §6.6 keinen Hinweis
+hat — Gruppen H und I —, ist die Frage ergänzt und als solche markiert), jede
+mit stabiler Kennung, Auslösezeitpunkt, Fertigkeitsdimension und der Liste der
+Fehlerklassen, die sie gefangen hätte. Die Abbildung Klasse → Frage ist total
+(`tests/test_routine.cpp`).
+
+Reihenfolge und Sichtbarkeit kommen aus dem eigenen Fehlerbestand
+(`Database::findingTallies()`, Fenster wie §3.2 b): was der Lernende wirklich
+falsch macht, steht oben; was lange nicht mehr vorkam, verblasst und
+verschwindet — dieselbe Ausblendung wie beim Blunder-Check-Drill (§7.5), auf
+die ganze Liste angewandt. `feedback["question"]` nennt nach einem Fehler die
+Frage, die ihn gefunden hätte („Frage 2 hätte das gefunden: …"); der Satz nach
+§6.6 bleibt dabei unverändert stehen.
+
+Der Drill selbst (§7.5) hängt in `TeacherEngine::play()`: im Sparring hält die
+App den Zug vor der Freigabe an, zeigt die Schachs und Schlagzüge des Gegners
+(SAN, keine Zahl), lässt antippen, welche gefährlich sind, und gibt den Zug
+danach frei. Der Takt (jeder 3. → 5. → 8. → aus, zurück bei A1, B1 oder C2)
+liegt als `core::BlunderCheckSchedule` im Qt-freien Kern, damit er prüfbar ist;
+`Sparring` benutzt ihn nur.
 
 **Grundsatz:** keine Bewertungszahl ohne Satz. `feedback` enthält immer `text`, optional `cp`/`wp`, und
 einen Schlüssel für die Regel, aus der der Satz stammt.

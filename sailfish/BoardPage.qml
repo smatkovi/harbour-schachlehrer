@@ -37,6 +37,11 @@ Page {
 
     readonly property bool sparring: teacher.mode === 3
     readonly property bool drill: teacher.mode === 2
+    // §7.5: while the blunder check holds a move, the board is read-only —
+    // the move is already chosen, the question is what he answers to it.
+    readonly property bool checking: teacher.blunderCheck !== undefined
+                                     && teacher.blunderCheck !== null
+                                     && teacher.blunderCheck.active === true
 
     SilicaFlickable {
         anchors.fill: parent
@@ -96,13 +101,20 @@ Page {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: page.width - 2 * Style.paddingSmall
                 height: width
-                interactive: teacher.gameResult === "" && !teacher.thinking
+                interactive: teacher.gameResult === "" && !teacher.thinking && !page.checking
 
                 onMoveRejected: {
                     // A refused move is not an error message; it is simply not
                     // a move. Let go of the selection and say nothing.
                     teacher.selectedSquare = -1
                 }
+            }
+
+            // ---- Der Blunder-Check, direkt unter dem Brett -------------
+            // teacher.md §7.5. Er steht hier und nicht in einem Dialog, weil
+            // die Antwort am Brett zu sehen ist und nicht im Text.
+            BlunderCheckOverlay {
+                width: parent.width
             }
 
             // ---- Der Satz, unter dem Brett -----------------------------
@@ -145,6 +157,14 @@ Page {
                     teacher.analyseCurrentGame()
                     pageStack.push(Qt.resolvedUrl("AnalysisPage.qml"))
                 }
+            }
+
+            // ---- Was frage ich mich? ------------------------------------
+            // teacher.md §6.6: die übertragbaren Hinweise *sind* die Fragen.
+            // Eingeklappt, weil eine Routine in den Kopf gehört und nicht an
+            // die Wand.
+            RoutinePanel {
+                width: parent.width
             }
 
             // ---- Die Zugliste -------------------------------------------

@@ -349,6 +349,30 @@ QVector<double> Database::errorMassByDimension(int games) const
     return out;
 }
 
+QVector<ClassTally> Database::findingTallies(int games) const
+{
+    // findings carry no date of their own; the game does (platform.md §5.1),
+    // and that is the resolution the fade-out of core/Routine.h needs.
+    QVector<ClassTally> out;
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral(
+            "SELECT f.code, COUNT(*), MAX(g.played_at) FROM findings f"
+            " JOIN games g ON g.id = f.game_id WHERE f.game_id IN"
+            " (SELECT id FROM games ORDER BY played_at DESC, id DESC LIMIT ?)"
+            " GROUP BY f.code"));
+    query.addBindValue(games);
+    if (!query.exec())
+        return out;
+    while (query.next()) {
+        ClassTally tally;
+        tally.code = query.value(0).toString();
+        tally.count = query.value(1).toInt();
+        tally.lastPlayedAt = query.value(2).toLongLong();
+        out.append(tally);
+    }
+    return out;
+}
+
 int Database::blunderCount(int games) const
 {
     QSqlQuery query(m_db);

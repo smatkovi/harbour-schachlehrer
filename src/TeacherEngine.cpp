@@ -77,6 +77,9 @@ TeacherEngine::TeacherEngine(QObject* parent)
     connect(m_analyser, SIGNAL(progress(int, int)), this, SLOT(onAnalysisProgress(int, int)));
     connect(m_analyser, SIGNAL(failed(QString)), this, SLOT(onEngineFailed(QString)));
     connect(m_sparring, SIGNAL(chanceMissed(QString, int)), this, SLOT(onChanceMissed(QString, int)));
+    // The routine is phase-bound (the opening and the endgame question exclude
+    // each other), so it follows the board.
+    connect(this, SIGNAL(positionChanged()), this, SIGNAL(routineChanged()));
 
     m_prompt = tr("Willkommen. Fang mit dem Aufwärmen an oder spiel gleich eine Partie.");
 }
@@ -103,12 +106,14 @@ void TeacherEngine::setPaths(const QString& enginePath, const QString& syzygyPat
         for (int i = 0; i < perDimension.size() && i < core::kDimensionCount; ++i)
             m_skill.delta[i] = perDimension.at(i) - theta;
     }
+    reloadHistory();
     // A missing engine is a normal state: the board, the repetitions and the
     // rules work without it, only sparring and analysis do not (§5).
     if (!m_engine->start())
         m_engineMessage = m_engine->lastError();
     emit engineChanged();
     emit progressChanged();
+    emit routineChanged();
 }
 
 qint64 TeacherEngine::today() const
@@ -240,13 +245,30 @@ void TeacherEngine::setPrompt(const QString& prompt)
     emit taskChanged();
 }
 
-void TeacherEngine::setFeedback(const QString& text, const QString& key, const core::Score* score)
+void TeacherEngine::setFeedback(const QString& text, const QString& key, const core::Score* score,
+                                core::ErrorClass cls)
 {
     // teacher.md §6.6: never a number alone, never a bare "wrong". `cp` and
     // `wp` are carried for the log, not for the screen.
     QVariantMap feedback;
     feedback[QStringLiteral("text")] = text;
     feedback[QStringLiteral("key")] = key;
+    // The link back: which question of his own routine would have caught this
+    // (§6.6 — the hints *are* the questions). The sentence above stays as it
+    // is; this is added to it, never instead of it, and it is empty when the
+    // class is not one the routine has a question for.
+    const int index = core::questionIndexFor(cls);
+    if (index >= 0) {
+        const core::Question& question = core::questionAt(index);
+        const int rank = core::rankOf(currentRoutine(), index);
+        QVariantMap entry;
+        entry[QStringLiteral("id")] = QString::fromLatin1(question.id);
+        entry[QStringLiteral("text")] = QString::fromUtf8(question.text);
+        entry[QStringLiteral("rank")] = rank;
+        entry[QStringLiteral("sentence")] =
+                QString::fromStdString(core::caughtSentence(rank, question));
+        feedback[QStringLiteral("question")] = entry;
+    }
     if (score && score->valid) {
         if (score->isMate)
             feedback[QStringLiteral("mate")] = score->mateIn;
@@ -264,6 +286,205 @@ void TeacherEngine::clearFeedback()
         return;
     m_feedback.clear();
     emit feedbackChanged();
+}
+
+// --- Was frage ich mich? (teacher.md §6.6, §7.5) ------------------------------
+
+void TeacherEngine::reloadHistory()
+{
+    // The window is the one of §3.2 (b): the last ten games, unfiltered by L,
+    // because this is a ratio and a filter would bend it.
+    m_history.clear();
+    if (!m_database->isOpen())
+        return;
+    const QVector<ClassTally> tallies = m_database->findingTallies(10);
+    const qint64 now = QDateTime::currentMSecsSinceEpoch() / 1000;
+    for (int i = 0; i < tallies.size(); ++i) {
+        const ClassTally& tally = tallies.at(i);
+        const core::ErrorClass cls = core::errorFromKey(tally.code.toStdString());
+        if (cls == core::ErrorClass::None)
+            continue;
+        int days = 0;
+        if (tally.lastPlayedAt > 0 && now > tally.lastPlayedAt)
+            days = static_cast<int>((now - tally.lastPlayedAt) / (60 * 60 * 24));
+        m_history.add(cls, days, tally.count);
+    }
+}
+
+core::RoutineView TeacherEngine::currentRoutine() const
+{
+    return core::personalise(m_history, m_position.phase());
+}
+
+QVariantList TeacherEngine::routine() const
+{
+    const core::RoutineView view = currentRoutine();
+    QVariantList out;
+    for (std::size_t i = 0; i < view.questions.size(); ++i) {
+        const core::QuestionStatus& status = view.questions[i];
+        const core::Question& question = core::questionAt(status.index);
+        QVariantMap entry;
+        entry[QStringLiteral("id")] = QString::fromLatin1(question.id);
+        entry[QStringLiteral("text")] = QString::fromUtf8(question.text);
+        entry[QStringLiteral("when")] = QString::fromUtf8(core::triggerName(question.when));
+        entry[QStringLiteral("whenKey")] = QString::fromLatin1(core::triggerKey(question.when));
+        entry[QStringLiteral("dimension")] =
+                QString::fromLatin1(core::dimensionKey(question.dimension));
+        entry[QStringLiteral("rank")] = static_cast<int>(i) + 1;
+        entry[QStringLiteral("standing")] = QString::fromLatin1(core::standingKey(status.standing));
+        entry[QStringLiteral("visible")] = status.standing != core::Standing::Retired;
+        // The question that caught the last mistake is marked, and that is the
+        // only emphasis in the list — no counters, no scores (§6.6, §9.2).
+        entry[QStringLiteral("caught")] = status.caughtLatest;
+        entry[QStringLiteral("fromSpec")] = question.fromSpec;
+        entry[QStringLiteral("source")] = QString::fromUtf8(question.source);
+        out.append(entry);
+    }
+    return out;
+}
+
+int TeacherEngine::drillMode() const
+{
+    switch (m_sparring->drillMode()) {
+    case core::DrillMode::Always: return DrillAlways;
+    case core::DrillMode::Never:  return DrillNever;
+    case core::DrillMode::Auto:   break;
+    }
+    return DrillAuto;
+}
+
+void TeacherEngine::setDrillMode(int mode)
+{
+    const core::DrillMode wanted = mode == DrillAlways ? core::DrillMode::Always
+                                 : mode == DrillNever  ? core::DrillMode::Never
+                                                       : core::DrillMode::Auto;
+    if (m_sparring->drillMode() == wanted)
+        return;
+    m_sparring->setDrillMode(wanted);
+    if (wanted == core::DrillMode::Never && !m_heldMove.isEmpty()) {
+        // Switching it off while it holds a move must not swallow the move.
+        const QString held = m_heldMove;
+        m_heldMove.clear();
+        m_blunderCheck.clear();
+        m_checkItems.clear();
+        emit blunderCheckChanged();
+        playInSparring(held.toStdString());
+    }
+    emit drillModeChanged();
+}
+
+bool TeacherEngine::beginBlunderCheck(const QString& uci)
+{
+    // §7.5: before the move is released, his checks and captures with SEE > 0,
+    // hidden. §1.2.2 is the whole reason: 72 % of all refutations live in that
+    // eleventh of the legal moves.
+    m_checkItems = Sparring::blunderCheckList(m_position, uci);
+    if (m_checkItems.isEmpty()) {
+        // Nothing loud at all. Asking about an empty list teaches nothing, so
+        // the move goes through and the counter is not spent.
+        return false;
+    }
+    m_heldMove = uci;
+
+    QVariantList moves;
+    for (int i = 0; i < m_checkItems.size(); ++i) {
+        QVariantMap entry;
+        entry[QStringLiteral("index")] = i;
+        entry[QStringLiteral("uci")] = m_checkItems.at(i).uci;
+        // SAN only. Never the SEE, never an evaluation — that is the answer
+        // and it is also a number (§6.6).
+        entry[QStringLiteral("san")] = m_checkItems.at(i).san;
+        moves.append(entry);
+    }
+
+    const core::Question* question = core::questionById("frage-schach-schlag");
+    m_blunderCheck.clear();
+    m_blunderCheck[QStringLiteral("active")] = true;
+    m_blunderCheck[QStringLiteral("moves")] = moves;
+    m_blunderCheck[QStringLiteral("question")] =
+            question ? QString::fromUtf8(question->text) : QString();
+    m_blunderCheck[QStringLiteral("prompt")] =
+            tr("Bevor du den Zug freigibst: Das könnte er darauf spielen. "
+               "Tipp an, was davon dich etwas kostet.");
+    emit blunderCheckChanged();
+    return true;
+}
+
+void TeacherEngine::answerBlunderCheck(const QVariantList& dangerous)
+{
+    if (m_heldMove.isEmpty())
+        return;
+    QVector<bool> marked(m_checkItems.size(), false);
+    for (int i = 0; i < dangerous.size(); ++i) {
+        const int index = dangerous.at(i).toInt();
+        if (index >= 0 && index < marked.size())
+            marked[index] = true;
+    }
+    bool correct = true;
+    int missed = 0;
+    for (int i = 0; i < m_checkItems.size(); ++i) {
+        if (marked.at(i) != m_checkItems.at(i).dangerous) {
+            correct = false;
+            if (m_checkItems.at(i).dangerous && !marked.at(i))
+                ++missed;
+        }
+    }
+    m_sparring->noteBlunderCheck(correct);
+
+    // A sentence in both cases, never a bare right/wrong (§6.6). The one after
+    // a miss names the question the drill belongs to. It is set *before* the
+    // move is released, because releasing it may end the game and the game's
+    // own sentence then has the last word, which is the right order.
+    if (correct)
+        setFeedback(tr("Richtig gesehen. Jetzt dein Zug."), QStringLiteral("blundercheck.ok"));
+    else if (missed > 0)
+        setFeedback(tr("Einen davon hast du stehen lassen — genau so einer kostet die Partie. "
+                       "Schau dir nach seinem Zug an, was er damit erreicht."),
+                    QStringLiteral("blundercheck.missed"), 0, core::ErrorClass::A1);
+    else
+        setFeedback(tr("Die, die du angetippt hast, kosten dich nichts — er kann sie spielen, "
+                       "du stehst danach genauso gut. Gefährlich ist nur, was Material gewinnt "
+                       "oder ein Schach, hinter dem etwas hängt."),
+                    QStringLiteral("blundercheck.overmarked"));
+
+    finishBlunderCheck(correct);
+}
+
+void TeacherEngine::skipBlunderCheck()
+{
+    if (m_heldMove.isEmpty())
+        return;
+    // Not answering is not a wrong answer: the streak simply does not grow.
+    finishBlunderCheck(false);
+}
+
+void TeacherEngine::finishBlunderCheck(bool correct)
+{
+    Q_UNUSED(correct)
+    const QString held = m_heldMove;
+    m_heldMove.clear();
+    m_checkItems.clear();
+    m_blunderCheck.clear();
+    emit blunderCheckChanged();
+    if (!held.isEmpty())
+        playInSparring(held.toStdString());
+}
+
+void TeacherEngine::playInSparring(const std::string& uci)
+{
+    if (!m_position.isLegal(uci))
+        return;
+    m_position.play(uci);
+    m_selected = -1;
+    emit positionChanged();
+    emit selectionChanged();
+
+    m_sparring->noteMovePlayed();
+    m_sparring->noteLearnerMove(m_position);   // §7.4 fires through chanceMissed()
+    if (!m_position.gameOver())
+        askOpponent();
+    else
+        analyseCurrentGame();
 }
 
 // --- progress ----------------------------------------------------------------
@@ -386,6 +607,14 @@ void TeacherEngine::startSparring(int handicap)
         }
     }
     m_sparring->reset(learnerElo(), wanted);
+    m_heldMove.clear();
+    m_checkItems.clear();
+    m_blunderCheck.clear();
+    emit blunderCheckChanged();
+    // §7.5: the drill is compulsory for a learner whose error mass sits in
+    // SRG. For everyone else it still runs, just as the fading scaffold it is.
+    reloadHistory();
+    emit routineChanged();
     setPrompt(tr("Spiel deine Partie. Ich sage dir hinterher, was wichtig war."));
     clearFeedback();
     if (!m_learnerIsWhite)
@@ -435,21 +664,24 @@ bool TeacherEngine::play(int fromSquare, int toSquare, const QString& promotion)
         return true;
     }
 
+    if (m_mode == Sparring) {
+        // §7.5: every third move (later every fifth, then off) the move is
+        // held at the gate until the learner has looked at what the opponent
+        // could answer. The move is accepted — it is not rejected, it waits.
+        if (m_heldMove.isEmpty() && m_sparring->blunderCheckDue()
+                && beginBlunderCheck(QString::fromStdString(uci))) {
+            m_selected = -1;
+            emit selectionChanged();
+            return true;
+        }
+        playInSparring(uci);
+        return true;
+    }
+
     m_position.play(uci);
     m_selected = -1;
     emit positionChanged();
     emit selectionChanged();
-
-    if (m_mode == Sparring) {
-        m_sparring->noteMovePlayed();
-        if (m_sparring->noteLearnerMove(m_position)) {
-            // §7.4 fired: the chance is gone and became an exercise.
-        }
-        if (!m_position.gameOver())
-            askOpponent();
-        else
-            analyseCurrentGame();
-    }
     return true;
 }
 
@@ -517,6 +749,15 @@ void TeacherEngine::onEngineFailed(const QString& reason)
 
 void TeacherEngine::takeBack()
 {
+    // A move the drill is holding was never played; letting it go is the
+    // take-back (§7.6: taking back is free and costs nothing).
+    if (!m_heldMove.isEmpty()) {
+        m_heldMove.clear();
+        m_checkItems.clear();
+        m_blunderCheck.clear();
+        emit blunderCheckChanged();
+        return;
+    }
     if (!m_position.undo())
         return;
     // §7.6: taking back is free and unlimited, and the event is written into
@@ -957,18 +1198,38 @@ void TeacherEngine::onAnalysisFinished(const QVector<core::Finding>& findings)
             m_database->upsertCard(cards.at(i));
     }
 
+    // §7.5: an A1, B1 or C2 event brings the blunder check back at once.
+    for (int i = 0; i < findings.size(); ++i) {
+        if (core::BlunderCheckSchedule::bringsBack(findings.at(i).cls)) {
+            m_sparring->requireBlunderCheck();
+            break;
+        }
+    }
+    // The record the routine orders itself by has just changed.
+    reloadHistory();
+
     // §7.7: one sentence about the result, at most five moments, one sentence
     // about the consequence. No move list, no evaluation graph, no accuracy.
     int events = 0;
+    const core::Finding* worst = 0;
     for (int i = 0; i < findings.size(); ++i) {
         if (findings.at(i).makesCard)
             ++events;
+        if (!worst || findings.at(i).dW > worst->dW)
+            worst = &findings.at(i);
     }
     setPrompt(events == 0
                       ? tr("Sauber. Diesmal war nichts dabei, was sich zu üben lohnt.")
                       : tr("%n Stelle(n) waren wichtig. Schau sie dir an.", "", events));
+    // The sentence of §6.6 for the moment that cost the most, and after it the
+    // question of his own routine that would have caught it. The sentence is
+    // extended, not replaced.
+    if (worst && !worst->sentence.empty())
+        setFeedback(QString::fromStdString(worst->sentence),
+                    QString::fromLatin1(core::errorKey(worst->cls)), 0, worst->cls);
     setMode(Review);
     emit progressChanged();
+    emit routineChanged();
 }
 
 void TeacherEngine::onChanceMissed(const QString& fen, int errorClass)
@@ -985,11 +1246,18 @@ void TeacherEngine::onChanceMissed(const QString& fen, int errorClass)
     finding.sentence = core::errorTemplate(finding.cls);
     const core::Card card = core::cardFromFinding(finding, today());
     m_database->upsertCard(card);
+    // §7.5: C2 (and A1, B1) put the blunder check back on.
+    if (core::BlunderCheckSchedule::bringsBack(finding.cls))
+        m_sparring->requireBlunderCheck();
+    setFeedback(tr("Die Gelegenheit ist vorbei — er hat sie stillschweigend beseitigt. "
+                   "Du bekommst die Stellung gleich noch einmal."),
+                QStringLiteral("chance.missed"), 0, finding.cls);
     emit progressChanged();
 }
 
 QVariantList TeacherEngine::lastFindings() const
 {
+    const core::RoutineView view = currentRoutine();
     QVariantList out;
     for (int i = 0; i < m_findings.size(); ++i) {
         const core::Finding& finding = m_findings.at(i);
@@ -1007,6 +1275,15 @@ QVariantList TeacherEngine::lastFindings() const
         // Always the sentence. Never a number on its own (§6.6).
         entry[QStringLiteral("text")] = QString::fromStdString(finding.sentence);
         entry[QStringLiteral("makesCard")] = finding.makesCard;
+        // …and the question of the routine that would have caught it (§6.6).
+        const int questionIndex = core::questionIndexFor(finding.cls);
+        if (questionIndex >= 0) {
+            const core::Question& question = core::questionAt(questionIndex);
+            entry[QStringLiteral("question")] = QString::fromUtf8(question.text);
+            entry[QStringLiteral("questionId")] = QString::fromLatin1(question.id);
+            entry[QStringLiteral("questionSentence")] = QString::fromStdString(
+                    core::caughtSentence(core::rankOf(view, questionIndex), question));
+        }
         out.append(entry);
     }
     return out;

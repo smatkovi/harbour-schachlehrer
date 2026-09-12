@@ -109,6 +109,28 @@ Page {
                 text: qsTr("Eine Bewertungszahl ohne Satz gibt es in dieser App nicht. „+1,4“ sagt nicht, was zu tun ist; „Dein Läufer steht ungedeckt und der Springer greift ihn an“ sagt es.")
             }
 
+            SectionHeader { text: qsTr("Blunder-Check") }
+
+            // teacher.md §7.5. The schedule is the method's decision, not the
+            // learner's — but forcing it on or off is legitimate: the one who
+            // wants the scaffolding longer should get it, and the one who is
+            // done with it should not have to fail three times to lose it.
+            ComboBox {
+                width: parent.width
+                label: qsTr("Vor der Zugfreigabe fragen")
+                description: qsTr("Im Sparring zeigt die App, was er als Schach oder Schlag zur Verfügung hat, und du tippst an, was davon dich etwas kostet. Von allein wird die Abfrage seltener, je öfter du richtig liegst — und kommt zurück, sobald wieder etwas hängen bleibt.")
+                currentIndex: teacher.drillMode
+                menu: ContextMenu {
+                    MenuItem { text: qsTr("Wenn nötig") }
+                    MenuItem { text: qsTr("Immer") }
+                    MenuItem { text: qsTr("Nie") }
+                }
+                onCurrentIndexChanged: {
+                    if (teacher.drillMode !== currentIndex)
+                        teacher.drillMode = currentIndex
+                }
+            }
+
             SectionHeader { text: qsTr("Engine") }
 
             Label {
@@ -141,6 +163,7 @@ Page {
                     Prefs.showLegalTargets = true
                     Prefs.markLastMove = true
                     teacher.flipped = false
+                    teacher.drillMode = 0
                 }
             }
         }

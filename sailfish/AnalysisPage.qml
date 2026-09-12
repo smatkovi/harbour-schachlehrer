@@ -154,6 +154,19 @@ Page {
                             }
                         }
 
+                        // teacher.md §6.6, the link back: which question of
+                        // his routine would have caught this one. It stands
+                        // after the sentence, never instead of it.
+                        Label {
+                            width: parent.width
+                            visible: text !== ""
+                            text: (modelData && modelData.questionSentence !== undefined)
+                                  ? ("" + modelData.questionSentence) : ""
+                            color: Style.highlightColor
+                            wrapMode: Text.WordWrap
+                            font.pixelSize: Style.fontSizeExtraSmall
+                        }
+
                         Label {
                             width: parent.width
                             visible: modelData && modelData.makesCard === true

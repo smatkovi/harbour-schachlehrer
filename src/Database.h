@@ -76,6 +76,16 @@ struct FindingRecord {
     QString fen, playedUci, bestUci, motif, sentence;
 };
 
+// How often one error class turned up in the window, and when the most recent
+// of them was played. This is what the thinking routine of core/Routine.h
+// orders itself by (teacher.md §6.6 hints, §7.5 fade-out): the learner's own
+// record, not a fixed list.
+struct ClassTally {
+    QString code;              // the stable error key, "A1", "B1", …
+    int count = 0;
+    qint64 lastPlayedAt = 0;   // seconds since the epoch, 0 when unknown
+};
+
 class Database : public QObject
 {
     Q_OBJECT
@@ -105,6 +115,8 @@ public:
     // The error mass per dimension over the last `games` games — this is a_d
     // (teacher.md §3.2 b), the actual diagnosis.
     QVector<double> errorMassByDimension(int games = 10) const;
+    // The same window, counted per error class instead of per dimension.
+    QVector<ClassTally> findingTallies(int games = 10) const;
     int blunderCount(int games = 10) const;
 
     // --- cards and reviews --------------------------------------------------

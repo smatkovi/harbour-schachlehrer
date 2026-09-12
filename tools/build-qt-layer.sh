@@ -19,9 +19,9 @@ done
 # shellcheck disable=SC2086
 g++ $FLAGS $INC -o "$OUT/qt-smoke" "$ROOT/tools/qt-smoke.cpp" \
     "$ROOT/src/EngineProcess.cpp" "$ROOT/src/Database.cpp" "$ROOT/src/Analyser.cpp" \
-    "$ROOT/src/Sparring.cpp" "$ROOT/src/TeacherEngine.cpp" \
+    "$ROOT/src/Sparring.cpp" "$ROOT/src/TeacherEngine.cpp" "$ROOT/src/ItemBank.cpp" \
     "$ROOT/src/core/Position.cpp" "$ROOT/src/core/Uci.cpp" "$ROOT/src/core/WinProb.cpp" \
     "$ROOT/src/core/Taxonomy.cpp" "$ROOT/src/core/Skill.cpp" "$ROOT/src/core/Placement.cpp" \
-    "$ROOT/src/core/Srs.cpp" "$ROOT/src/core/Card.cpp" \
+    "$ROOT/src/core/Srs.cpp" "$ROOT/src/core/Card.cpp" "$ROOT/src/core/Routine.cpp" \
     "$OUT"/moc_*.cpp $LIBS
 "$OUT/qt-smoke"

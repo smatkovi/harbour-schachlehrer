@@ -39,6 +39,7 @@
 // becomes a card of the class that was missed.
 
 #include "core/Position.h"
+#include "core/Routine.h"
 #include "core/Taxonomy.h"
 
 #include <QObject>
@@ -53,6 +54,16 @@ namespace schach {
 struct ScoredMove {
     QString uci;
     core::Score score;    // from the mover's point of view
+};
+
+// One entry of the blunder-check drill (teacher.md §7.5): one of the
+// opponent's checks or captures, and whether it really costs the learner
+// something. `dangerous` is the answer key and never leaves the C++ side
+// before the learner has answered.
+struct BlunderCheckItem {
+    QString uci;
+    QString san;
+    bool dangerous = false;
 };
 
 // One planned mistake.
@@ -96,11 +107,20 @@ public:
     // with SEE > 0, hidden, for the learner to mark. The scaffold fades as it
     // is answered correctly, and comes back on the next A1, B1 or C2 event.
     static QStringList threatsToCheck(const core::Position& position);
-    bool blunderCheckDue() const;
-    void noteBlunderCheck(bool correct);
+    // The same list for the move the learner is about to release: his checks
+    // and captures in the position *after* that move, which is the question
+    // "was kostet dich der Zug, den du gerade loslassen willst?". The drill
+    // sits at the release, so the intended move is known and it would be a
+    // waste not to ask about it.
+    static QVector<BlunderCheckItem> blunderCheckList(const core::Position& before,
+                                                      const QString& intendedUci);
+    bool blunderCheckDue() const { return m_check.due(); }
+    void noteBlunderCheck(bool correct) { m_check.noteAnswer(correct); }
     void requireBlunderCheck();       // an A1/B1/C2 event happened
-    int blunderCheckEvery() const { return m_checkEvery; }
-    void noteMovePlayed();
+    int blunderCheckEvery() const { return m_check.every; }
+    void noteMovePlayed() { m_check.noteMove(); }
+    core::DrillMode drillMode() const { return m_check.mode; }
+    void setDrillMode(core::DrillMode mode) { m_check.mode = mode; }
 
 signals:
     void mistakeMade(const QString& fen, int errorClass);
@@ -119,9 +139,8 @@ private:
     QString m_pendingFen;
     core::ErrorClass m_pendingClass;
     int m_pendingAge;          // in the learner's own moves
-    int m_checkEvery;          // 3 -> 5 -> 8 -> off
-    int m_checkStreak;
-    int m_movesSinceCheck;
+    // §7.5, in the Qt-free core so the schedule can be checked on its own.
+    core::BlunderCheckSchedule m_check;
     std::mt19937 m_rng;
 };
 

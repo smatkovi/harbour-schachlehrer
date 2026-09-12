@@ -12,16 +12,16 @@ INC="-I$ROOT/src -isystem $ROOT/third_party/chess-library"
 
 CORE="$ROOT/src/core/Position.cpp $ROOT/src/core/Uci.cpp $ROOT/src/core/WinProb.cpp \
       $ROOT/src/core/Taxonomy.cpp $ROOT/src/core/Skill.cpp $ROOT/src/core/Placement.cpp \
-      $ROOT/src/core/Srs.cpp $ROOT/src/core/Card.cpp"
+      $ROOT/src/core/Srs.cpp $ROOT/src/core/Card.cpp $ROOT/src/core/Routine.cpp"
 
-for t in perft uci taxonomy srs placement; do
+for t in perft uci taxonomy srs placement routine; do
     printf 'building test_%s\n' "$t"
     # shellcheck disable=SC2086
     g++ $CXXFLAGS $INC -o "$OUT/test_$t" "$ROOT/tests/test_$t.cpp" $CORE
 done
 
 rc=0
-for t in perft uci taxonomy srs placement; do
+for t in perft uci taxonomy srs placement routine; do
     printf '\n=== test_%s ===\n' "$t"
     "$OUT/test_$t" || rc=1
 done

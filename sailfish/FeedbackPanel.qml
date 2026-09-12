@@ -43,6 +43,13 @@ Item {
     // helps the learner look something up, never instead of the sentence.
     property bool showRuleKey: false
 
+    // teacher.md §6.6, the link back: which question of the learner's own
+    // routine would have caught this. It is *added* to the sentence above and
+    // never replaces it, and it is empty when the error class has no question.
+    readonly property string questionSentence: (feedback && feedback.question
+                                                && feedback.question.sentence)
+                                               ? ("" + feedback.question.sentence) : ""
+
     // "verloren"/"gewonnen" colouring stays out of it on purpose: a sentence
     // that needs a colour to be understood is the wrong sentence.
     property color sentenceColor: Style.primaryColor
@@ -63,6 +70,16 @@ Item {
             color: panel.sentenceColor
             wrapMode: Text.WordWrap
             font.pixelSize: Style.fontSizeSmall
+        }
+
+        Label {
+            x: Style.horizontalPageMargin
+            width: parent.width - 2 * Style.horizontalPageMargin
+            visible: panel.questionSentence !== ""
+            text: panel.questionSentence
+            color: Style.highlightColor
+            wrapMode: Text.WordWrap
+            font.pixelSize: Style.fontSizeExtraSmall
         }
 
         // Secondary, small, and only on request: the number is never the
