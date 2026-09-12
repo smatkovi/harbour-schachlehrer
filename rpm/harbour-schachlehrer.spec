@@ -180,6 +180,7 @@ exit 0
 %{_datadir}/%{name}/qml/qmldir
 %{_datadir}/%{name}/qml/icons
 %{_datadir}/%{name}/assets
+%{_datadir}/%{name}/items
 %{_datadir}/%{name}/net
 %{_datadir}/%{name}/translations
 

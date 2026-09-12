@@ -20,6 +20,8 @@
 */
 #include "TeacherEngine.h"
 
+#include <QtGlobal>
+
 #include <QDateTime>
 
 namespace schach {
@@ -307,10 +309,17 @@ int TeacherEngine::dueCards() const
 
 // --- the invokables ----------------------------------------------------------
 
+void TeacherEngine::setItemBankPath(const QString& path)
+{
+    if (!m_items.load(path))
+        qWarning("placement items unavailable: %s", qPrintable(m_items.error()));
+}
+
 void TeacherEngine::startPlacement()
 {
     delete m_placement;
     m_placement = new core::Placement(0);
+    m_usedItems.clear();
     setMode(Placement);
     m_taskClock.start();
     // §4.1: it must not feel like an exam — no timer, no running score, the
@@ -403,7 +412,12 @@ bool TeacherEngine::play(int fromSquare, int toSquare, const QString& promotion)
 
     if (m_mode == Drill || m_mode == Placement) {
         const int milliseconds = m_taskClock.isValid() ? static_cast<int>(m_taskClock.elapsed()) : 0;
-        const bool correct = !m_solutionUci.isEmpty() && uci == m_solutionUci.toStdString();
+        // An item may have more than one move that is just as good; the engine
+        // decided that when the bank was built, not the learner here.
+        const QString played = QString::fromStdString(uci);
+        const bool correct = !m_solutionUci.isEmpty()
+                && (played == m_solutionUci
+                    || m_task.value(QStringLiteral("alsoAccepted")).toStringList().contains(played));
         m_position.play(uci);
         m_selected = -1;
         emit positionChanged();
@@ -585,16 +599,41 @@ void TeacherEngine::loadNextTask()
             return;
         }
         const core::Dimension dimension = m_placement->nextDimension();
+        const double difficulty = m_placement->nextDifficulty();
+        const PlacementItem* item = m_items.pick(dimension, difficulty, m_usedItems);
+        if (!item) {
+            // No position, no question. Saying so is the only honest answer;
+            // asking about the starting position would measure nothing.
+            setMode(Idle);
+            setPrompt(m_items.isEmpty()
+                          ? tr("Der Aufgabenbestand für den Einstufungstest fehlt in dieser "
+                               "Installation. Spielen und Üben geht trotzdem.")
+                          : tr("Die Aufgaben sind aufgebraucht."));
+            emit progressChanged();
+            return;
+        }
+        m_usedItems << item->id;
+        m_position.setFen(item->fen.toStdString());
+        m_selected = -1;
+        m_solutionUci = item->solution;
+
         QVariantMap task;
         task[QStringLiteral("kind")] = QStringLiteral("placement");
         // §6.2: the learner never learns the theme *before* solving, so the
         // dimension is carried for the estimator only, not for display.
-        task[QStringLiteral("difficulty")] = m_placement->nextDifficulty();
+        task[QStringLiteral("difficulty")] = difficulty;
         task[QStringLiteral("index")] = m_placement->answered() + 1;
+        task[QStringLiteral("total")] = 25;
         task[QStringLiteral("dimension")] = QString::fromLatin1(core::dimensionKey(dimension));
+        task[QStringLiteral("itemId")] = item->id;
+        task[QStringLiteral("explanationAfterSolving")] = item->explanation;
+        task[QStringLiteral("alsoAccepted")] = item->alsoAccepted;
         m_task = task;
-        setPrompt(tr("Am Zug: Was machst du hier?"));
+        setPrompt(m_position.whiteToMove() ? tr("Weiß am Zug: Was machst du hier?")
+                                           : tr("Schwarz am Zug: Was machst du hier?"));
         m_taskClock.restart();
+        emit positionChanged();
+        emit selectionChanged();
         emit taskChanged();
         return;
     }

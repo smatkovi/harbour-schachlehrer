@@ -1,0 +1,947 @@
+[
+  {
+    "id": "tak-0824-41y85",
+    "fen": "4r3/1bQ5/1p1p1kp1/1PpPp3/2P1n3/6nP/4B1P1/2R3K1 b - - 0 32",
+    "solution": "g3e2",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 824,
+    "explanation": "Der Springer schlägt den Läufer mit Schach und greift dabei den ungedeckten Turm auf c1 mit an: der König muss zuerst aus dem Schach, danach holst du dir den Turm."
+  },
+  {
+    "id": "tak-0797-5z3jt",
+    "fen": "r2q1rk1/pB4pp/3p4/2p2P2/2Pn1Q2/8/PP3PPP/R4RK1 b - - 0 15",
+    "solution": "d4e2",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 797,
+    "explanation": "Der Springer gibt Schach und greift im selben Zug die Dame an. Weil der König zuerst reagieren muss, kannst du die Dame im nächsten Zug einsammeln."
+  },
+  {
+    "id": "tak-0786-tpxfh",
+    "fen": "3q1r2/r4ppk/p1pp1n1p/1p2p3/1PP1P3/P2PQN1n/1N2BP1K/R4R2 b - - 1 20",
+    "solution": "f6g4",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 786,
+    "explanation": "Von g4 aus gibt der Springer Schach und trifft gleichzeitig die Dame auf e3: eine Gabel, auf die es nur eine Antwort gibt, und die reicht nicht."
+  },
+  {
+    "id": "tak-0962-b0oh6",
+    "fen": "3r1b1R/Qpq1k3/p1ppp3/4p3/N1P1Pn2/3P4/PP3P2/2K2B2 w - - 0 24",
+    "solution": "h8h7",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 962,
+    "explanation": "Mit dem Schach auf der siebten Reihe treibst du den König zur Seite, und dahinter auf derselben Reihe steht der Turm, den du eigentlich willst."
+  },
+  {
+    "id": "tak-0990-9gksh",
+    "fen": "r4r2/pp1b1ppk/4p2p/2Rn4/3P2Q1/3qB1P1/PP3PBP/1R4K1 w - - 5 21",
+    "solution": "g2e4",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 990,
+    "explanation": "Der Läufer gibt Schach auf der langen Diagonale und greift zugleich die ungedeckte Dame an. Erst das Schach, dann die Dame."
+  },
+  {
+    "id": "tak-1060-01q3y",
+    "fen": "rnb2r2/ppp2B1k/3p3p/2b4Q/4P3/3P4/Pq1NKPPP/8 w - - 0 15",
+    "solution": "h5g6",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 1060,
+    "explanation": "Das Damenschach auf g6 nimmt dem König die Fluchtfelder; er muss nach h8, und dort setzt die Dame auf h6 matt."
+  },
+  {
+    "id": "tak-1134-0zvqk",
+    "fen": "4rk2/ppp2ppp/2p5/2N5/6n1/5N1q/PPP1Q2P/3R2K1 w - - 3 22",
+    "solution": "c5d7",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 1134,
+    "explanation": "Das Springerschach treibt den König nach g8, und dort ist seine Grundreihe ungedeckt: die Dame setzt auf e8 matt."
+  },
+  {
+    "id": "tak-1254-0inao",
+    "fen": "2bq2kr/p3pR2/1p5r/2pPp1pB/2P1P1P1/5Q2/P2N4/6K1 w - - 4 28",
+    "solution": "f7g7",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 1254,
+    "explanation": "Der Turm opfert sich, um den König nach g7 zu ziehen. Dort steht er im Netz deiner Dame, und die setzt matt."
+  },
+  {
+    "id": "tak-1294-01jao",
+    "fen": "2kr3r/ppp2ppp/2nbp3/6B1/P2P2n1/2N2N1q/1PP2P2/R2QRBK1 b - - 3 14",
+    "solution": "d6h2",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 1294,
+    "explanation": "Der Läufer bietet sich auf h2 an: schlägt der Springer, verlässt er seinen Posten, und die Dame setzt auf demselben Feld matt."
+  },
+  {
+    "id": "tak-1435-03izt",
+    "fen": "r4rk1/ppp3pR/2np1qQ1/8/8/2P2NB1/PP3KP1/1Bb5 w - - 1 19",
+    "solution": "h7h8",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 1435,
+    "explanation": "Der Turm zieht den König nach h8, wo ihn die Dame von h7 aus matt setzt. Das Opfer gewinnt kein Material, es stellt nur den König um, und genau darum geht es."
+  },
+  {
+    "id": "tak-1352-0dz8o",
+    "fen": "2r1k2r/1q2bp2/p2p4/1p1P2p1/3Q4/PN4B1/1Pn4P/R4R1K w k - 0 25",
+    "solution": "d4h8",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 1352,
+    "explanation": "Der Turm auf h8 steht ungedeckt, und du nimmst ihn mit Schach, sodass dem Gegner keine Zeit bleibt, etwas dagegen zu tun."
+  },
+  {
+    "id": "tak-1574-0ihpk",
+    "fen": "r4rk1/bppb1pp1/p2p1q1p/P2Pn3/1PB1P3/5NQ1/1B3PPP/R4RK1 b - - 3 18",
+    "solution": "e5f3",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 1574,
+    "explanation": "Der Springer schlägt mit Schach und macht dabei die lange Diagonale frei: nach dem Rückschlag steht der Läufer auf b2 ohne Deckung da."
+  },
+  {
+    "id": "tak-1532-0cjmb",
+    "fen": "r3k2r/ppqnbpp1/2p1p1np/3pP1N1/3P2QP/4B3/P1PN1PP1/R4RK1 w kq - 0 17",
+    "solution": "g5e6",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 1532,
+    "explanation": "Der Springer schlägt auf e6, greift von dort die ungedeckte Dame an und öffnet gleichzeitig die Linie auf den Springer g6. Zwei Drohungen auf einmal sind eine zu viel."
+  },
+  {
+    "id": "tak-1693-0b6s8",
+    "fen": "r4r2/1ppqNp1k/p2p1n1p/4p1p1/P3P2N/2PP2R1/2Q2PPP/R5K1 b - - 0 19",
+    "solution": "g5h4",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 1693,
+    "explanation": "Du schlägst zuerst den Springer und greifst dabei den Turm an. Die Reihenfolge ist alles: umgekehrt bleibt dir nichts."
+  },
+  {
+    "id": "tak-1720-09gey",
+    "fen": "r4rk1/1b2bppp/pp6/2pp4/P5Q1/2Pq1N1P/1P1N2P1/R4R1K w - - 0 21",
+    "solution": "g4d7",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 1720,
+    "explanation": "Die Dame stellt sich mitten in die gegnerische Stellung und greift beide Läufer gleichzeitig an, und gedeckt ist keiner von beiden."
+  },
+  {
+    "id": "tak-1753-0cj5y",
+    "fen": "r3kb1r/1bq2ppp/p2p4/1p3P2/3nN3/1PP5/1P2Q1PP/R4RK1 w kq - 0 19",
+    "solution": "e4f6",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 1753,
+    "explanation": "Doppelschach: zwei Figuren geben gleichzeitig Schach, dagegen hilft weder Blocken noch Schlagen. Der König muss laufen, und auf d8 wartet das Matt."
+  },
+  {
+    "id": "tak-1780-0ffvr",
+    "fen": "2b3qk/r3n1pp/pb2rp2/1p2p3/4P1Q1/P1R4P/BB3PP1/2R3K1 w - - 2 30",
+    "solution": "c3c8",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 1780,
+    "explanation": "Du schlägst auf c8 und stehst danach auf derselben Reihe wie die gegnerische Dame. Wer zurückschlägt, gibt sie preis."
+  },
+  {
+    "id": "tak-1903-0xh43",
+    "fen": "r1b5/1pp1pkbp/pn4p1/4P2n/3q4/2NB4/PPP3PP/R1BQ3K w - - 0 14",
+    "solution": "d3g6",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 1903,
+    "explanation": "Der Läufer schlägt mit Schach und öffnet zugleich die d-Linie auf die Dame. Der König muss zuerst reagieren, dann fällt die Dame."
+  },
+  {
+    "id": "tak-1916-0ei8t",
+    "fen": "5rk1/2p3pp/Q4p2/1r1q4/1b6/1PB4P/P2P1PP1/R2R2K1 b - - 3 23",
+    "solution": "f8a8",
+    "alsoAccepted": [],
+    "dimension": "TAK",
+    "difficulty": 1916,
+    "explanation": "Der Turm greift die Dame an, und sie hat kein Feld mehr, auf dem sie sicher steht. Eingesperrte Figuren gewinnt man ohne Schach, nur durch Hinschauen."
+  },
+  {
+    "id": "rec-0979-q3ugs",
+    "fen": "r2qr1k1/pp1n2p1/2pb2p1/6N1/2PP1pP1/4B3/PP3PK1/R6Q w - - 2 21",
+    "solution": "h1h7",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 979,
+    "explanation": "Die Dame treibt den König mit Schachs über das Brett. Rechne die Folge zu Ende, dann siehst du, dass er auf e7 nicht entkommt."
+  },
+  {
+    "id": "rec-0973-xtdkk",
+    "fen": "r5k1/ppQ3pp/3p3b/3P4/3q4/PP5b/4B1P1/5R1K w - - 0 27",
+    "solution": "c7f7",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 973,
+    "explanation": "Die Dame gibt sich auf f8 her, um den Turm von der Grundreihe wegzulocken; erst dadurch setzt der zweite Turm dort matt."
+  },
+  {
+    "id": "rec-1147-6oflf",
+    "fen": "b3r1k1/6p1/8/7R/3q4/3B3Q/PP3RPP/6K1 b - - 3 29",
+    "solution": "e8e1",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 1147,
+    "explanation": "Jedes Schach erzwingt eine Antwort, und nach dem zweiten Opfer steht der König so, dass die Dame auf d1 matt setzt. Bis dorthin musst du rechnen."
+  },
+  {
+    "id": "rec-1144-driht",
+    "fen": "5rrk/1b3ppp/p3pR2/1p2q3/3p2RQ/1B5P/PPP3P1/7K w - - 7 26",
+    "solution": "h4h7",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 1144,
+    "explanation": "Das Damenopfer zieht den König nach h7, dann kommt der Turm mit Schach auf die h-Linie, und das Matt ist nicht mehr aufzuhalten."
+  },
+  {
+    "id": "rec-1284-2mfqi",
+    "fen": "r1b2R2/kp1p4/p5p1/2p3Q1/8/1Pbq4/P5PP/4R2K w - - 10 31",
+    "solution": "g5c5",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 1284,
+    "explanation": "Die Dame schlägt mit Schach und hält zugleich die Fesselung aufrecht; von hier an ist jede gegnerische Antwort erzwungen."
+  },
+  {
+    "id": "rec-1293-0qttk",
+    "fen": "2r1r1k1/6b1/4p1Qp/1q6/1P6/8/5PPP/2R1R1K1 w - - 1 29",
+    "solution": "c1c8",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 1293,
+    "explanation": "Erst der Abtausch auf c8, dann das Damenschach auf e6, das den Turm mit einer Gabel zurückholt. Die Reihenfolge macht den Unterschied."
+  },
+  {
+    "id": "rec-1420-0mrlk",
+    "fen": "r5k1/1b3pp1/4p2p/1N1p2q1/3p4/3B1P2/1P1b1P1P/Q1R2K2 w - - 7 27",
+    "solution": "a1a8",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 1420,
+    "explanation": "Die Dame gibt sich für den Turm her, damit dein eigener Turm mit Schach auf die Grundreihe kommt. Ohne dieses Opfer gibt es kein Matt."
+  },
+  {
+    "id": "rec-1370-0suud",
+    "fen": "r5k1/2pbrp2/p2n3p/1p1P2q1/8/1P1Q2nP/PBB2bPK/RN6 w - - 0 27",
+    "solution": "d3h7",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 1370,
+    "explanation": "Mit dem Schach auf h7 beginnt eine Folge, in der der Gegner keine Wahl hat. Wer bis zum Ende rechnet, sieht das Matt jetzt schon."
+  },
+  {
+    "id": "rec-1468-0qpl6",
+    "fen": "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 28",
+    "solution": "h1h8",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 1468,
+    "explanation": "Der Turm lockt den König nach h8; erst von dort aus kann die Dame über die h-Linie zum Matt durchgreifen."
+  },
+  {
+    "id": "rec-1489-0gzz4",
+    "fen": "4k2r/1b6/p2p2p1/1p1Nq3/4r1p1/PN6/1PPQ2P1/1K2R3 w k - 0 26",
+    "solution": "e1e4",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 1489,
+    "explanation": "Du gibst den Turm, um die Dame auf ein Feld zu ziehen, auf dem der Springer sie gabelt. Das Material kommt zwei Züge später mit Zinsen zurück."
+  },
+  {
+    "id": "rec-1668-06oak",
+    "fen": "r3kbnr/2Qq1ppp/p3p1b1/4P3/2N2B2/7P/PP3PP1/R4RK1 w kq - 3 18",
+    "solution": "c7d7",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 1668,
+    "explanation": "Die Dame opfert sich, um den König nach d7 zu holen; von dort gabelt der Springer König und Turm."
+  },
+  {
+    "id": "rec-1607-0gzhd",
+    "fen": "3r1rk1/2p2p1p/np2p1p1/p3P3/5PPn/1PN5/PBPR3P/2K3R1 b - - 2 17",
+    "solution": "d8d2",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 1607,
+    "explanation": "Das Turmopfer zieht den König nach d2, wo der Springer mit Schach zugreift und den Turm auf g1 mitnimmt."
+  },
+  {
+    "id": "rec-1765-0kxc1",
+    "fen": "r5k1/pppn2p1/3qb2p/3pN3/3P4/2PB2PP/PPQ3K1/5R2 w - - 2 21",
+    "solution": "d3h7",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 1765,
+    "explanation": "Nach dem Läuferschach steht der König in einem Netz aus Abzugsschachs. Rechne die Reihenfolge durch, sie ist von Anfang bis Ende erzwungen."
+  },
+  {
+    "id": "rec-1794-0vch0",
+    "fen": "r3k2r/ppb2pp1/3qp1b1/3p2B1/2PN2P1/3P4/PP2QPB1/R3R1K1 b kq - 0 20",
+    "solution": "h8h1",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 1794,
+    "explanation": "Der Turm lenkt den Läufer nach h1, danach kommt die Dame mit Schach auf h2 und holt sich das Matt auf h1."
+  },
+  {
+    "id": "rec-2030-0xhcl",
+    "fen": "2rq2k1/5p1p/p4Pp1/4r3/7Q/2N1bR2/1P4PP/R6K w - - 0 27",
+    "solution": "f3e3",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 2030,
+    "explanation": "Der Turmtausch auf e3 zieht den Verteidiger weg; erst danach steht das Feld h6 für deine Dame offen."
+  },
+  {
+    "id": "rec-1911-1e5at",
+    "fen": "1rk5/p2r3p/6p1/Q2qNb2/8/8/PP3PPP/4R1K1 w - - 8 28",
+    "solution": "e1c1",
+    "alsoAccepted": [],
+    "dimension": "REC",
+    "difficulty": 1911,
+    "explanation": "Die Turmschachs treiben den König aus seiner Deckung, bis die Dame mit Schach zugreifen kann. Jeder einzelne Zug dazwischen ist erzwungen."
+  },
+  {
+    "id": "erd-0720-narrenmatt",
+    "fen": "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2",
+    "solution": "d8h4",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 720,
+    "explanation": "Nach f3 und g4 steht die Diagonale zum König offen, und die Dame setzt sofort matt. So schnell bestraft sich Nachlässigkeit in der Eröffnung."
+  },
+  {
+    "id": "erd-0860-schaefermatt",
+    "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+    "solution": "h5f7",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 860,
+    "explanation": "f7 ist zu Beginn das schwächste Feld, weil nur der König es deckt. Die Dame schlägt dort ein, gedeckt vom Läufer, und das ist matt."
+  },
+  {
+    "id": "erd-0968-xoaka",
+    "fen": "r3kb1r/pp1qp1p1/5n1p/2ppp1N1/3n4/3Q4/PPPP1PPP/RNB2RK1 w kq - 0 11",
+    "solution": "d3g6",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 968,
+    "explanation": "Die Dame greift den König an, der noch in der Mitte steht: wer seine Entwicklung vernachlässigt, bekommt die Rechnung sofort."
+  },
+  {
+    "id": "erd-1139-2mww1",
+    "fen": "r1bq2kr/1ppp2pp/p1n5/3n2N1/1b2P3/8/PP3PPP/R1BQ1RK1 w - - 0 11",
+    "solution": "d1d5",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 1139,
+    "explanation": "Die Dame schlägt in der Mitte mit Schach, und der König steht ohne Deckung da: die Figuren, die ihn schützen sollten, sind noch zu Hause."
+  },
+  {
+    "id": "erd-1126-0vwzd",
+    "fen": "r2qkbnr/pb1np1pp/2p2p2/1p2N3/2p1PP2/P1N5/1P1P2PP/R1BQKB1R w KQkq - 0 8",
+    "solution": "d1h5",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 1126,
+    "explanation": "Das Damenschach auf h5 erzwingt g6, und dort steht der Springer schon bereit, einzuschlagen."
+  },
+  {
+    "id": "erd-1221-07zs4",
+    "fen": "r1bqk2r/1p3ppp/p3p3/2bpP3/3n1Pn1/2NB1N2/PPP1Q1PP/R1B1K2R w KQkq - 6 10",
+    "solution": "f3d4",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 1221,
+    "explanation": "Du schlägst den Springer und stellst dabei den Springer auf g4 unter Beschuss. Der Gegner kann nicht beides halten."
+  },
+  {
+    "id": "erd-1274-1htu1",
+    "fen": "rn1qk2r/1pp1ppb1/p2p1n1p/3N2pb/2B1P3/3P2Q1/PPP2PP1/R1B1K1NR w KQkq - 0 10",
+    "solution": "d5f6",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 1274,
+    "explanation": "Erst der Abtausch mit Schach, dann das Schlagen auf h5: in dieser Reihenfolge gewinnst du die Figur, die sonst entkommen wäre."
+  },
+  {
+    "id": "erd-1419-0psjy",
+    "fen": "rn1qk1r1/pbppb2Q/1p2P2p/8/3P1p2/2P5/PPBN1PPP/R1B2RK1 b q - 2 13",
+    "solution": "g8g2",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 1419,
+    "explanation": "Der Turm schlägt auf g2 und öffnet dabei ein Abzugsschach. Der König hat sich in der Eröffnung nicht in Sicherheit gebracht, und das kostet."
+  },
+  {
+    "id": "erd-1343-0pt9g",
+    "fen": "rn1qkbnr/1b2pppp/p7/1P6/2B5/2p1PN2/1P3PPP/R1BQK2R w KQkq - 0 9",
+    "solution": "c4f7",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 1343,
+    "explanation": "Der Läufer schlägt auf f7 und lockt den König weg vom Schutz der eigenen Dame. Ein klassischer Griff nach dem schwächsten Feld der Eröffnung."
+  },
+  {
+    "id": "erd-1560-elefanten",
+    "fen": "r1bqkb1r/pppn1ppp/5n2/3N2B1/3P4/8/PP2PPPP/R2QKBNR b KQkq - 0 6",
+    "solution": "f6d5",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 1560,
+    "explanation": "Du schlägst den Springer, und weil der Läufer auf g5 danach die Dame angreift, ist das Zwischenschach auf b4 stärker als jedes Zurückschlagen."
+  },
+  {
+    "id": "erd-1507-1brr7",
+    "fen": "r2qkbnr/pp4pp/2n2p2/2p1N3/2BpP3/3P2NP/PPP2PP1/R1BbK2R w KQkq - 0 10",
+    "solution": "c4f7",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 1507,
+    "explanation": "Der Läufer gibt Schach auf f7, der König muss ins Freie nach e7, und dort setzt der Springer matt."
+  },
+  {
+    "id": "erd-1700-budapest",
+    "fen": "r1b1k2r/ppppqppp/2n5/4n3/1PP2B2/5N2/1P1NPPPP/R2QKB1R b KQkq - 0 8",
+    "solution": "e5d3",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 1700,
+    "explanation": "Der Springer setzt auf d3 matt: der König hat die Mitte nie verlassen, und seine eigenen Bauern nehmen ihm die letzten Felder."
+  },
+  {
+    "id": "erd-1660-englund",
+    "fen": "r1b1k1nr/pppp1ppp/2n5/4P3/8/2Q2N2/PqP1PPPP/RN2KB1R b KQkq - 0 8",
+    "solution": "b2c1",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 1660,
+    "explanation": "Die Dame setzt auf c1 matt. Wer in der Eröffnung Material einsammelt und dabei den König stehen lässt, verliert genau so."
+  },
+  {
+    "id": "erd-1760-hollaendisch",
+    "fen": "rnbqkbnr/ppppp3/7p/6p1/3P1p2/6B1/PPP1PPPP/RN1QKBNR w KQkq - 0 5",
+    "solution": "e2e3",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 1760,
+    "explanation": "Der ruhige Bauernzug öffnet die Linie zum vorgeprellten Bauern auf f4; schlägt der Gegner, kommt dein Läufer mit Tempo an den König."
+  },
+  {
+    "id": "erd-1789-0f5ag",
+    "fen": "r1b1k1nr/3p1ppp/p1nQ4/1N2p3/1q2P3/8/PPPB1PPP/R3KB1R b KQkq - 0 10",
+    "solution": "b4e4",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 1789,
+    "explanation": "Das Zwischenschach ist wichtiger als jedes Zurückschlagen: mit Schach holst du dir den Bauern und behältst den Zug."
+  },
+  {
+    "id": "erd-1996-16nrd",
+    "fen": "r1bq1rk1/pp2bppp/2n1p3/2ppN3/3P4/2PBP1n1/PP1N1PPP/R2QK2R w KQ - 0 10",
+    "solution": "d3h7",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 1996,
+    "explanation": "Der Läufer schlägt auf h7 mit Schach und gewinnt so den Zug, den du für den Rest der Kombination brauchst."
+  },
+  {
+    "id": "erd-1922-2btbx",
+    "fen": "rn2k1nr/pp3ppp/2pbp3/q4b2/2BN4/2N2Q2/PPPP1PPP/R1B2RK1 b kq - 3 8",
+    "solution": "a5e5",
+    "alsoAccepted": [],
+    "dimension": "ERD",
+    "difficulty": 1922,
+    "explanation": "Die Dame stellt sich in die Mitte und greift h2 und den ungedeckten Springer auf d4 zugleich an. Der Gegner hat seine Figuren nicht gedeckt."
+  },
+  {
+    "id": "srg-0996-tknls",
+    "fen": "2r1k1nr/pp3ppp/8/4qP2/1b1p1R2/3B2P1/PPP1K2P/R2Q4 w k - 4 18",
+    "solution": "f4e4",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 996,
+    "explanation": "Der Turm stellt sich der Dame in den Weg und ist dabei selbst gedeckt: schlägt sie, verliert sie sich. So beantwortest du die Drohung und gewinnst dabei."
+  },
+  {
+    "id": "srg-1113-o1tnh",
+    "fen": "r1k4r/ppp3p1/5nBp/8/3nPB2/2P5/P1P2P1P/2KR3R b - - 0 15",
+    "solution": "d4e2",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 1113,
+    "explanation": "Statt die angegriffene Figur zurückzuziehen, gibst du Schach und greifst zugleich den Läufer an. Gegenangriff ist hier die beste Verteidigung."
+  },
+  {
+    "id": "srg-1117-ftpgn",
+    "fen": "r4rk1/3b1ppp/p2Np3/1p1pP1b1/3N1n2/4Q1P1/P4P1P/1R3RK1 b - - 0 21",
+    "solution": "f4h3",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 1117,
+    "explanation": "Der Springer geht mit Schach nach h3 und stellt dabei die Diagonale deiner Dame frei. Der Gegner kommt gar nicht mehr dazu, seine eigene Drohung auszuführen."
+  },
+  {
+    "id": "srg-1256-k7xhi",
+    "fen": "r3k2r/3q1pp1/2p1p1p1/1Bn3P1/8/ppPP1Q1P/1P4P1/2KR3R w kq - 0 24",
+    "solution": "b5c6",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 1256,
+    "explanation": "Du schlägst zuerst auf c6 und triffst dabei Dame und Turm zugleich. Hättest du erst verteidigt, wäre die Gelegenheit weg gewesen."
+  },
+  {
+    "id": "srg-1292-bcofi",
+    "fen": "4rr2/3p2kp/p2P2P1/1pp1Pp2/3q1P2/3B1bQ1/P3KP2/R5R1 w - - 1 28",
+    "solution": "g3f3",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 1292,
+    "explanation": "Der Läufer auf f3 hängt. Bevor du an eigene Pläne denkst, nimmst du das, was ungedeckt herumsteht."
+  },
+  {
+    "id": "srg-1427-9hdxf",
+    "fen": "3r4/pb1r1pk1/1p3bp1/8/6Pp/2p2B2/PP1R1PPN/3R2K1 w - - 0 35",
+    "solution": "d2d7",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 1427,
+    "explanation": "Der Abtausch auf d7 nimmt dem Gegner die Figur, die gefährlich werden wollte. Verteidigen heißt oft nur: rechtzeitig tauschen."
+  },
+  {
+    "id": "srg-1399-6e8ng",
+    "fen": "r1b2rk1/pp1n1ppp/2pbp3/q5B1/2BPn3/2N1PN1P/PP1Q1PP1/R3K2R w KQ - 1 11",
+    "solution": "c3e4",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 1399,
+    "explanation": "Der Springer auf e4 steht ungedeckt, und du nimmst ihn. Die Fesselung, auf die der Gegner gebaut hat, trägt nicht."
+  },
+  {
+    "id": "srg-1567-5euuf",
+    "fen": "1r2r1k1/1b1p1ppp/4q3/n2Np3/1Q6/2P3R1/BP3PPP/4R1K1 b - - 0 26",
+    "solution": "b7d5",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 1567,
+    "explanation": "Erst schlagen, dann verteidigen: nach dem Abtausch auf d5 hält deine Stellung zusammen und der gegnerische Angriff läuft ins Leere."
+  },
+  {
+    "id": "srg-1520-6uyfp",
+    "fen": "r3k2r/ppp2p1p/2p2p2/4q3/2B1N1b1/8/PPPP2P1/R1B2RK1 w kq - 2 16",
+    "solution": "e4f6",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 1520,
+    "explanation": "Mit Schach schlägst du auf f6 und greifst gleichzeitig den Läufer auf g4 an. So beantwortest du die Drohung und gewinnst dabei Material."
+  },
+  {
+    "id": "srg-1649-1hqsv",
+    "fen": "1rbqr1k1/p5bp/1p4p1/2pn1p2/5P2/2PP4/PP1BQNBP/R4RK1 w - - 1 18",
+    "solution": "g2d5",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 1649,
+    "explanation": "Der Abtausch mit Schach beseitigt den Angreifer, bevor er nach f7 kommt. Eine Drohung entschärft man am besten sofort."
+  },
+  {
+    "id": "srg-1631-0b5dy",
+    "fen": "2r2k2/p6p/2p1p3/1bPp4/1Q1B2R1/7P/P1q4K/4Rr2 w - - 5 34",
+    "solution": "g4g2",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 1631,
+    "explanation": "Der Turm greift die ungedeckte Dame an und deckt gleichzeitig die zweite Reihe. Ein Zug, der verteidigt und angreift, ist zwei wert."
+  },
+  {
+    "id": "srg-1850-0d2yq",
+    "fen": "r6r/pp2k2p/3b1pp1/2p1p3/2P1P3/4BP1P/nP1RBP2/2K3R1 w - - 0 18",
+    "solution": "c1b1",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 1850,
+    "explanation": "Der König geht aus der gefährlichen Linie und nimmt dabei den Springer auf a2 ins Visier. Vorbeugen ist hier mehr wert als jeder Angriff."
+  },
+  {
+    "id": "srg-1767-0ts3b",
+    "fen": "3q1k1r/pbN2p1p/1p1p2p1/3p4/4n3/2Q5/P3KPPP/6NR w - - 0 18",
+    "solution": "c3h8",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 1767,
+    "explanation": "Der Turm auf h8 ist ungedeckt, und du nimmst ihn mit Schach. Das ist zugleich die Antwort auf die gegnerische Drohung."
+  },
+  {
+    "id": "srg-1982-1nt8v",
+    "fen": "7k/p2nb2p/2p3p1/2Pp1b2/1Q1PpPpP/1NN1PqP1/P4BK1/8 w - - 17 41",
+    "solution": "g2g1",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 1982,
+    "explanation": "Ein bescheidener Königszug: er nimmt dem Gegner jedes Schach, und seine vorgeprellte Figur steht danach ohne Rückweg da."
+  },
+  {
+    "id": "srg-1988-4byly",
+    "fen": "r1b1k2r/pp1pppbp/6p1/q3P3/3Qn3/5N2/PPP2PPP/RN2KB1R w KQkq - 1 11",
+    "solution": "b2b4",
+    "alsoAccepted": [],
+    "dimension": "SRG",
+    "difficulty": 1988,
+    "explanation": "Der Bauernzug greift die Dame an und nimmt ihr zugleich den Rückweg. Sie muss auf ein Feld, das dir passt."
+  },
+  {
+    "id": "end-0847-ob76b",
+    "fen": "8/5p2/4p1k1/6p1/4Q1K1/6P1/8/8 b - - 3 74",
+    "solution": "f7f5",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 847,
+    "explanation": "Der Bauer gibt Schach und greift dabei die ungedeckte Dame an. Auch im Endspiel ist der Bauer oft die stärkste Figur."
+  },
+  {
+    "id": "end-0839-ti9mi",
+    "fen": "7R/1P3p1k/8/6p1/7p/7P/1r4P1/6K1 b - - 1 37",
+    "solution": "h7h8",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 839,
+    "explanation": "Der Turm steht ungedeckt neben deinem König, und du nimmst ihn einfach. Im Endspiel entscheidet Material fast alles."
+  },
+  {
+    "id": "end-0837-sc2xq",
+    "fen": "8/p7/6K1/8/1k6/8/7P/8 b - - 1 44",
+    "solution": "a7a5",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 837,
+    "explanation": "Der Freibauer läuft sofort los, statt auf den König zu warten: im Wettlauf zählt jedes einzelne Tempo."
+  },
+  {
+    "id": "end-0978-3cfbi",
+    "fen": "8/p7/6K1/1k6/8/6PP/8/8 b - - 0 52",
+    "solution": "a7a5",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 978,
+    "explanation": "Du schickst den Freibauern los, statt mit dem König zu manövrieren. Wer im Wettlauf einen Zug verliert, verliert das Endspiel."
+  },
+  {
+    "id": "end-0993-xtxia",
+    "fen": "8/8/5p2/4p3/6pP/4k3/6K1/8 w - - 0 60",
+    "solution": "h4h5",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 993,
+    "explanation": "Der Bauer geht voran, weil der gegnerische König ihn nicht mehr einholt. Rechne den Wettlauf ab, bevor du den König bewegst."
+  },
+  {
+    "id": "end-1111-t7su9",
+    "fen": "8/8/6Kp/8/6kP/8/8/8 w - - 1 43",
+    "solution": "h4h5",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1111,
+    "explanation": "Mit h5 nimmst du dem schwarzen König das Feld vor dem Bauern, und dein König holt sich h6. Danach läuft der Freibauer durch."
+  },
+  {
+    "id": "end-1029-rligm",
+    "fen": "8/8/3K1k2/6p1/1R6/7p/8/8 b - - 1 61",
+    "solution": "h3h2",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1029,
+    "explanation": "Der Bauer geht bis auf das vorletzte Feld. Jetzt muss der Turm ihn aufhalten, und dafür gibt er sich selbst her."
+  },
+  {
+    "id": "end-1260-schluessel",
+    "fen": "4k3/8/3K4/4P3/8/8/8/8 w - - 0 1",
+    "solution": "d6e6",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1260,
+    "explanation": "Der König geht vor den eigenen Bauern und besetzt das Schlüsselfeld. Nicht der Bauer gewinnt dieses Endspiel, sondern der König."
+  },
+  {
+    "id": "end-1150-bauernendsp",
+    "fen": "8/8/8/4k3/8/8/4KP2/8 w - - 0 1",
+    "solution": "e2e3",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1150,
+    "explanation": "Der König geht dem Bauern voran und nimmt die Opposition. Schiebst du zuerst den Bauern, hält der Gegner remis."
+  },
+  {
+    "id": "end-1357-01cxb",
+    "fen": "4k3/R5R1/5K1p/1Pp3r1/8/6P1/4p2P/8 b - - 0 53",
+    "solution": "g5g7",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1357,
+    "explanation": "Du schlägst den Turm und greifst gleich den nächsten an: zwei ungedeckte Türme auf derselben Reihe sind ein Geschenk."
+  },
+  {
+    "id": "end-1326-0ahiz",
+    "fen": "8/8/8/3k2Kp/7P/8/8/8 w - - 3 58",
+    "solution": "g5h5",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1326,
+    "explanation": "Der König nimmt den Bauern und steht danach genau richtig, um den eigenen Freibauern zu begleiten."
+  },
+  {
+    "id": "end-1498-06xmo",
+    "fen": "8/8/8/5p2/p1P5/P3K1k1/1P6/8 b - - 2 47",
+    "solution": "f5f4",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1498,
+    "explanation": "Der Bauer gibt Schach und gewinnt damit den Zug, den dein König braucht, um vor den eigenen Bauern zu kommen."
+  },
+  {
+    "id": "end-1578-05jkz",
+    "fen": "8/8/8/8/3p4/3k1P2/8/2K5 b - - 1 62",
+    "solution": "d3e2",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1578,
+    "explanation": "Der König geht zum gegnerischen Bauern, weil der eigene Freibauer von allein läuft. Im Bauernendspiel rechnet man, man zieht nicht."
+  },
+  {
+    "id": "end-1610-g44j9",
+    "fen": "8/2p5/6p1/p7/7P/2k1K1P1/8/8 w - - 6 51",
+    "solution": "g3g4",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1610,
+    "explanation": "Der Bauernvorstoß schafft einen zweiten Freibauern, und gegen zwei getrennte Freibauern kommt ein König allein nicht an."
+  },
+  {
+    "id": "end-1652-03qrh",
+    "fen": "2QK4/8/p7/5b1p/6kP/P2pB3/5P2/8 b - - 0 45",
+    "solution": "f5c8",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1652,
+    "explanation": "Der Läufer nimmt die Dame; jeder andere Zug lässt sie am Leben, und dann ist die Stellung nicht mehr zu halten."
+  },
+  {
+    "id": "end-1867-0gcw4",
+    "fen": "8/8/3k2p1/P2Pp2p/2p1P2P/K5P1/8/5b2 w - - 0 46",
+    "solution": "a5a6",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1867,
+    "explanation": "Der Freibauer muss jetzt laufen: jeder Wartezug gibt dem gegnerischen König die Zeit, ihn einzuholen."
+  },
+  {
+    "id": "end-1793-08ren",
+    "fen": "8/b4B2/3k4/3p1nPP/P7/2P5/6K1/8 w - - 1 49",
+    "solution": "h5h6",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1793,
+    "explanation": "Beide Seiten haben einen Freibauern, und du bist einen Zug schneller. Deshalb wird hier gerechnet und nicht verteidigt."
+  },
+  {
+    "id": "end-1960-reti",
+    "fen": "7K/8/k1P5/7p/8/8/8/8 w - - 0 1",
+    "solution": "h8g7",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1960,
+    "explanation": "Der König läuft scheinbar in die falsche Richtung und erreicht doch beides: er holt den gegnerischen Freibauern ein und begleitet den eigenen. Ein Weg, zwei Aufgaben."
+  },
+  {
+    "id": "end-1900-saavedra",
+    "fen": "8/8/1KP5/3r4/8/8/8/k7 w - - 0 1",
+    "solution": "c6c7",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1900,
+    "explanation": "Der Bauer geht weiter, obwohl der Turm ihn aufhält: er zwingt den Turm auf die Felder, auf denen dein König ihn später angreift."
+  },
+  {
+    "id": "end-1944-0ejfo",
+    "fen": "8/1r6/p1b5/P2K1p1k/1P1BpP2/4P3/8/8 w - - 0 45",
+    "solution": "d5c6",
+    "alsoAccepted": [],
+    "dimension": "END",
+    "difficulty": 1944,
+    "explanation": "Der König schlägt den Läufer und greift danach den Turm an. Im Endspiel ist der König eine angreifende Figur."
+  },
+  {
+    "id": "stl-1186-jtwqy",
+    "fen": "rn5r/1b4k1/p4Rpp/1p1p4/3P4/1BP5/P1P3PP/R5K1 w - - 1 21",
+    "solution": "a1f1",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1186,
+    "explanation": "Der Turm kommt auf die offene f-Linie, wo er später eindringt. Ein ruhiger Zug, der die Stellung vorbereitet, statt sofort etwas zu schlagen."
+  },
+  {
+    "id": "stl-1259-ohvua",
+    "fen": "r1b3k1/6P1/p2pp2B/1pp5/2nnP3/2N5/PPP3PP/R5K1 w - - 0 24",
+    "solution": "a1f1",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1259,
+    "explanation": "Du bringst den letzten Turm ins Spiel. Wenn beim Gegner alles gedeckt ist, hilft nur, noch eine Figur heranzuführen."
+  },
+  {
+    "id": "stl-1223-ko0rh",
+    "fen": "2r1r1k1/1p2q1n1/2p3Q1/p2pP3/3P4/PP4P1/5PK1/2RR4 w - - 3 33",
+    "solution": "d1h1",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1223,
+    "explanation": "Der Turm wechselt auf die Linie, auf der der Angriff stattfindet. Erst die Figuren heranführen, dann zuschlagen."
+  },
+  {
+    "id": "stl-1438-neqri",
+    "fen": "1n3k2/pB4pp/1ppp1q2/5p2/6n1/P1PP2P1/2P1PP2/R2QR1K1 b - - 0 17",
+    "solution": "f6h6",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1438,
+    "explanation": "Die Dame stellt sich still auf h6 und droht Matt. Der Gegner hat nichts dagegen, weil seine Figuren alle auf der anderen Seite stehen."
+  },
+  {
+    "id": "stl-1342-x9p30",
+    "fen": "r5k1/ppq1p2p/2ppPrpQ/5p2/5P2/2PR4/P4P1P/bN4K1 w - - 1 21",
+    "solution": "d3h3",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1342,
+    "explanation": "Der Turm schwenkt auf die h-Linie. Der Angriff braucht kein Opfer, nur eine Figur mehr an der richtigen Stelle."
+  },
+  {
+    "id": "stl-1410-bnu0d",
+    "fen": "2r5/pp2k1pB/2p5/3p4/8/2N2rP1/PP1P3P/n1B3KR b - - 0 19",
+    "solution": "c8f8",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1410,
+    "explanation": "Du verdoppelst auf der f-Linie, statt sofort zu schlagen: der Druck auf f2 ist mehr wert als jede sofortige Abwicklung."
+  },
+  {
+    "id": "stl-1595-rxqvz",
+    "fen": "2r1r1k1/1b2Bp1p/3p2p1/2qP4/2p5/2P4P/3Q1PP1/3R1BK1 w - - 1 25",
+    "solution": "e7f6",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1595,
+    "explanation": "Der Läufer besetzt das starke Feld, das der Gegner nicht mehr kontrollieren kann. Von dort entscheidet er die Partie ohne ein einziges Schach."
+  },
+  {
+    "id": "stl-1553-o7a1u",
+    "fen": "r4kr1/1b3p2/p2qpn1p/2R3p1/P7/5P2/3BQ1PP/2R4K w - - 3 35",
+    "solution": "d2b4",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1553,
+    "explanation": "Der Läufer fesselt und legt damit die gegnerische Stellung lahm: eine gefesselte Figur verteidigt nichts mehr."
+  },
+  {
+    "id": "stl-1479-m3nzs",
+    "fen": "r2q1k1r/1b1P1pbp/p5p1/3p4/B4p2/8/PPP2PPP/R2Q1RK1 w - - 0 16",
+    "solution": "f1e1",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1479,
+    "explanation": "Der Turm besetzt die offene Linie und droht, auf e8 einzudringen. Solche ruhigen Züge entscheiden mehr Partien als Kombinationen."
+  },
+  {
+    "id": "stl-1684-liia7",
+    "fen": "r3k2r/pp3ppp/2n1pn2/3p4/3P4/2PB1P2/PP2N1Pb/RN1KR3 w kq - 0 13",
+    "solution": "g2g3",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1684,
+    "explanation": "Der kleine Bauernzug nimmt dem Läufer die Felder. Er hat keinen Rückweg mehr, und das kostet den Gegner die Figur."
+  },
+  {
+    "id": "stl-1708-i4miw",
+    "fen": "r1b2rk1/p4pp1/2pq3p/8/2B1pBn1/2NP2K1/PPP2PP1/R2Q1R2 b - - 4 18",
+    "solution": "d6g6",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1708,
+    "explanation": "Die Dame geht nach g6 und bereitet den Abzug vor. Die Drohung ist hier stärker als ihre sofortige Ausführung."
+  },
+  {
+    "id": "stl-1748-rgkh8",
+    "fen": "3q1r1k/rb2bppp/p2p1n2/2p1pPB1/P3P2Q/1PN2R2/2P3PP/R5K1 w - - 2 20",
+    "solution": "f3h3",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1748,
+    "explanation": "Der Turm kommt auf die h-Linie, und der Angriff läuft von allein. Du brauchst kein Opfer, nur den richtigen Platz für die Figur."
+  },
+  {
+    "id": "stl-1760-f1fbw",
+    "fen": "r2r2k1/5p1p/p4pqB/1p2p3/nP6/5QN1/6PP/5RK1 w - - 4 25",
+    "solution": "g3f5",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1760,
+    "explanation": "Der Springer besetzt den Vorposten f5. Von dort greift er die Königsstellung an, und vertreiben kann ihn niemand."
+  },
+  {
+    "id": "stl-1819-6ppv9",
+    "fen": "3r1r1k/pp3pR1/1qn1p3/4P2P/P3bP2/1PQ5/2P1B3/2K3R1 w - - 1 29",
+    "solution": "c3g3",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1819,
+    "explanation": "Die Dame wechselt auf die Linie, auf der der Gegner schwach ist. Ein Zug ohne Schach, der die Partie trotzdem entscheidet."
+  },
+  {
+    "id": "stl-1773-gk9ew",
+    "fen": "r5rk/p4p1p/2qbpPpQ/1p1p2P1/2pP4/P1N5/1PP4P/1K3R1R w - - 2 25",
+    "solution": "f1f3",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1773,
+    "explanation": "Der Turm wird für den Angriff herangeführt. Ohne diesen ruhigen Vorbereitungszug funktioniert das Damenopfer im nächsten Zug nicht."
+  },
+  {
+    "id": "stl-1914-rgoas",
+    "fen": "r4rk1/ppq1bpp1/5n2/6N1/7Q/2P5/PP3PPP/3R1RK1 w - - 1 19",
+    "solution": "d1d3",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1914,
+    "explanation": "Der Turm geht auf die dritte Reihe, um zum König zu schwenken. Ein Angriff entsteht erst, wenn genug Figuren da sind."
+  },
+  {
+    "id": "stl-1981-cmseu",
+    "fen": "r4r2/1p3p1k/p2qbQp1/3pR1p1/8/2P5/4B3/5R1K w - - 0 34",
+    "solution": "f1f2",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1981,
+    "explanation": "Ein ruhiger Turmzug, der die zweite Reihe sichert und den Druck hält. In solchen Stellungen gewinnt man durch Verbessern der Figuren, nicht durch Rechnen."
+  },
+  {
+    "id": "stl-1922-8kpsr",
+    "fen": "r4rk1/pp3pp1/2ppbn1p/4p3/2P1P3/P2P3P/Bq2NPP1/R2Q1RK1 w - - 0 15",
+    "solution": "a2b3",
+    "alsoAccepted": [],
+    "dimension": "STL",
+    "difficulty": 1922,
+    "explanation": "Der Läufer räumt das Feld a2 für den Turm. Danach hat die weit vorgepreschte Dame kein Feld mehr, auf das sie ausweichen könnte."
+  }
+]

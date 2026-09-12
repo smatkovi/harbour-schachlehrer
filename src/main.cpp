@@ -60,6 +60,8 @@ int main(int argc, char *argv[])
                       SailfishApp::pathTo(QStringLiteral("syzygy")).toLocalFile(),
                       SailfishApp::pathTo(QStringLiteral("net/nn-37f18f62d772.nnue")).toLocalFile(),
                       dataDirectory + QStringLiteral("/schachlehrer.sqlite"));
+    teacher->setItemBankPath(
+        SailfishApp::pathTo(QStringLiteral("items/placement.json")).toLocalFile());
     view->rootContext()->setContextProperty(QStringLiteral("teacher"), teacher);
 
     view->setSource(SailfishApp::pathTo(QStringLiteral("qml/harbour-schachlehrer.qml")));

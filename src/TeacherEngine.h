@@ -32,6 +32,7 @@
 // names the rule the sentence came from so the UI can link to the explanation.
 
 #include "Analyser.h"
+#include "ItemBank.h"
 #include "Database.h"
 #include "EngineProcess.h"
 #include "Sparring.h"
@@ -89,6 +90,9 @@ public:
     // app then runs without engine and with an in-memory database.
     void setPaths(const QString& enginePath, const QString& syzygyPath,
                   const QString& evalFile, const QString& databasePath);
+    // The placement items (teacher.md §4.2); without them the test says so
+    // instead of asking about the starting position.
+    void setItemBankPath(const QString& path);
 
     QString fen() const;
     QVariantList squares() const;
@@ -164,6 +168,8 @@ private:
     QElapsedTimer m_taskClock;
 
     core::Placement* m_placement;
+    ItemBank m_items;
+    QStringList m_usedItems;   // one position is never asked twice in a run
     core::SkillState m_skill;
     core::SessionPlan m_sessionPlan;
     QVector<core::Card> m_sessionCards;

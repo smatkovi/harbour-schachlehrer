@@ -174,6 +174,16 @@ install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/sailfish/icons/icon-256.png
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets/pieces
         DESTINATION ${SCHACH_DATADIR}/assets FILES_MATCHING PATTERN "*.svg")
 
+# The placement items (teacher.md §4.2). Without them the test says so rather
+# than asking about the starting position, so a missing bank is a warning.
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/assets/items/placement.json)
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets/items
+            DESTINATION ${SCHACH_DATADIR} FILES_MATCHING PATTERN "*.json")
+else()
+    message(WARNING "${SCHACH_APP}: assets/items/placement.json is missing — "
+                    "the placement test will have nothing to ask")
+endif()
+
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/sailfish/desktop/${SCHACH_APP}.desktop
         DESTINATION share/applications)
 
