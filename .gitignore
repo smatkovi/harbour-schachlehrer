@@ -1,0 +1,8 @@
+build/
+.engine-build/
+# Built by tools/fetch-engine.sh, not checked in: binaries and tablebase data.
+third_party/prebuilt/
+assets/*.nnue
+assets/syzygy/
+*.rpm
+*.user

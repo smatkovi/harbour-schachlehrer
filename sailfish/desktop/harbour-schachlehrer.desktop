@@ -1,0 +1,17 @@
+[Desktop Entry]
+Name=Schachlehrer
+Comment=Schach lernen: messen, spielen, Fehler finden, üben
+Icon=harbour-schachlehrer
+Exec=harbour-schachlehrer
+Type=Application
+Categories=Game;Education;
+X-Sailfish-ApplicationType=Silica
+
+[X-Sailjail]
+# chess-spec/platform.md §5.3. Internet is for the Lichess tablebase query and,
+# from M8 on, the Lichess Board API; Documents is only ever used for an import
+# or export the user starts by hand. Base.permission leaves disable-exec.inc
+# commented out, so the Stockfish child process may be started (§1.9).
+Permissions=Internet;Documents
+OrganizationName=org.smatkovi
+ApplicationName=harbour-schachlehrer
