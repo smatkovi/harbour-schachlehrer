@@ -65,6 +65,7 @@ add_executable(${SCHACH_APP}
 
 target_include_directories(${SCHACH_APP} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/chess-library
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/chess-library/include
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/chess-library/src
     ${SAILFISHAPP_INCLUDE_DIRS}
@@ -123,10 +124,19 @@ else()
 endif()
 
 # The small NNUE net that goes with the -DNNUE_EMBEDDING_OFF build
-# (platform.md §1.4). Optional here: an engine with an embedded net needs none.
-file(GLOB SCHACH_NET ${CMAKE_CURRENT_SOURCE_DIR}/third_party/prebuilt/net/*.nnue)
+# (platform.md §1.4): 3,36 MiB instead of the 71 MiB big net, and 57 MiB RSS
+# instead of 273. tools/fetch-engine.sh leaves it in assets/; a net built into
+# the engine would make it unnecessary, hence the glob rather than a hard name.
+file(GLOB SCHACH_NET
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets/*.nnue
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/prebuilt/net/*.nnue)
 if(SCHACH_NET)
     install(FILES ${SCHACH_NET} DESTINATION ${SCHACH_DATADIR}/net)
+    message(STATUS "${SCHACH_APP}: NNUE net ${SCHACH_NET}")
+else()
+    message(WARNING
+        "${SCHACH_APP}: no *.nnue in assets/ — an engine built with "
+        "-DNNUE_EMBEDDING_OFF cannot evaluate without it (platform.md §1.4)")
 endif()
 
 # --------------------------------------------------------------------------
@@ -155,8 +165,10 @@ file(GLOB SCHACH_QML ${CMAKE_CURRENT_SOURCE_DIR}/sailfish/*.qml)
 list(SORT SCHACH_QML)
 install(FILES ${SCHACH_QML} ${CMAKE_CURRENT_SOURCE_DIR}/sailfish/qmldir
         DESTINATION ${SCHACH_DATADIR}/qml)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/sailfish/icons
-        DESTINATION ${SCHACH_DATADIR}/qml FILES_MATCHING PATTERN "*.png")
+# AboutPage.qml shows the icon; one copy next to the QML is enough, the other
+# four sizes live under hicolor only (rpmlint files-duplicate).
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/sailfish/icons/icon-256.png
+        DESTINATION ${SCHACH_DATADIR}/qml/icons)
 
 # cburnett piece SVGs, BSD-3-Clause, see CREDITS/ASSETS.md (platform.md §4.3).
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets/pieces
@@ -211,6 +223,7 @@ if(SCHACH_BUILD_TESTS)
             add_executable(${t} tests/${t}.cpp ${SCHACH_CORE_SOURCES})
             target_include_directories(${t} PRIVATE
                 ${CMAKE_CURRENT_SOURCE_DIR}/src
+                ${CMAKE_CURRENT_SOURCE_DIR}/third_party/chess-library
                 ${CMAKE_CURRENT_SOURCE_DIR}/third_party/chess-library/include
                 ${CMAKE_CURRENT_SOURCE_DIR}/third_party/chess-library/src)
             target_compile_definitions(${t} PRIVATE

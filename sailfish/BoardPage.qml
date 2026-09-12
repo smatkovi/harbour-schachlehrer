@@ -1,0 +1,167 @@
+/*
+    Copyright (C) 2026 smatkovi
+
+    This file is part of harbour-schachlehrer.
+
+    harbour-schachlehrer is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    harbour-schachlehrer is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with harbour-schachlehrer. If not, see <https://www.gnu.org/licenses/>.
+
+    SPDX-License-Identifier: GPL-3.0-or-later
+*/
+import QtQuick 2.6
+import Sailfish.Silica 1.0
+import "."
+
+// The board that sparring and drill share (docs/design.md §7). The layout is
+// the same in both modes on purpose: prompt above, board in the middle,
+// feedback sentence below. What changes between a drill and a game is the text
+// in those two strips, not the arrangement, so nothing has to be relearned.
+//
+// Portrait only. A board that has to compete with the keyboard-less landscape
+// for height ends up with squares too small to hit, and the whole point of
+// tap-tap entry is that the target square is visible while you aim at it.
+Page {
+    id: page
+    objectName: "boardPage"
+    allowedOrientations: Orientation.Portrait | Orientation.PortraitInverted
+
+    readonly property bool sparring: teacher.mode === 3
+    readonly property bool drill: teacher.mode === 2
+
+    SilicaFlickable {
+        anchors.fill: parent
+        contentHeight: content.height + Style.paddingLarge
+        VerticalScrollDecorator { }
+
+        PullDownMenu {
+            MenuItem {
+                text: qsTr("Partie auswerten")
+                enabled: teacher.engineReady
+                onClicked: {
+                    teacher.analyseCurrentGame()
+                    pageStack.push(Qt.resolvedUrl("AnalysisPage.qml"))
+                }
+            }
+            MenuItem {
+                text: qsTr("Aufgabe überspringen")
+                visible: teacher.mode !== 0
+                onClicked: teacher.skipTask()
+            }
+            MenuItem {
+                text: qsTr("Brett drehen")
+                onClicked: teacher.flipped = !teacher.flipped
+            }
+        }
+
+        Column {
+            id: content
+            width: page.width
+            spacing: Style.paddingMedium
+
+            PageHeader {
+                title: page.sparring ? qsTr("Sparring")
+                       : page.drill ? qsTr("Übung")
+                       : qsTr("Brett")
+                description: teacher.gameResult !== "" ? teacher.gameResult
+                             : (teacher.whiteToMove ? qsTr("Weiß am Zug")
+                                                    : qsTr("Schwarz am Zug"))
+            }
+
+            EngineBanner { }
+
+            // ---- Die Aufgabenstellung, über dem Brett ------------------
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                visible: text !== ""
+                text: teacher.prompt
+                color: Style.highlightColor
+                wrapMode: Text.WordWrap
+                font.pixelSize: Style.fontSizeSmall
+            }
+
+            // ---- Das Brett ---------------------------------------------
+            Board {
+                id: board
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: page.width - 2 * Style.paddingSmall
+                height: width
+                interactive: teacher.gameResult === "" && !teacher.thinking
+
+                onMoveRejected: {
+                    // A refused move is not an error message; it is simply not
+                    // a move. Let go of the selection and say nothing.
+                    teacher.selectedSquare = -1
+                }
+            }
+
+            // ---- Der Satz, unter dem Brett -----------------------------
+            FeedbackPanel {
+                id: feedback
+                width: parent.width
+            }
+
+            ThinkingIndicator {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+            }
+
+            // ---- Die Knöpfe --------------------------------------------
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: Style.paddingMedium
+
+                Button {
+                    text: qsTr("Zurücknehmen")
+                    // Free in sparring, and the engine explains what the taken
+                    // back move did (docs/design.md §4, teacher.md §7).
+                    enabled: teacher.mode !== 0 && !teacher.thinking
+                    onClicked: teacher.takeBack()
+                }
+
+                Button {
+                    text: qsTr("Hinweis")
+                    enabled: teacher.engineReady && !teacher.thinking
+                    onClicked: teacher.requestHint()
+                }
+            }
+
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: teacher.gameResult !== ""
+                text: qsTr("Partie auswerten")
+                enabled: teacher.engineReady
+                onClicked: {
+                    teacher.analyseCurrentGame()
+                    pageStack.push(Qt.resolvedUrl("AnalysisPage.qml"))
+                }
+            }
+
+            // ---- Die Zugliste -------------------------------------------
+            SectionHeader {
+                text: qsTr("Züge")
+                visible: teacher.moveList && teacher.moveList.length > 0
+            }
+
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                visible: teacher.moveList && teacher.moveList.length > 0
+                wrapMode: Text.WordWrap
+                color: Style.secondaryColor
+                font.pixelSize: Style.fontSizeExtraSmall
+                text: MoveList.asText(teacher.moveList)
+            }
+        }
+    }
+}

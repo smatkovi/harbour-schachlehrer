@@ -58,12 +58,27 @@ Links:
 # the RPM build picks the directory that matches its own target and refuses to
 # produce a package without it: an RPM whose engine is missing would install
 # fine and then be a permanently crippled app on the device.
-if [ ! -f third_party/prebuilt/%{_arch}/stockfish ]; then
+#
+# Two spellings are accepted, because the two names for the same target differ:
+# %%{_arch} is "aarch64" and "arm", while the cross-build and the SDK target
+# call the 32-bit one "armv7hl" (= %%{_target_cpu}). Whichever directory holds
+# the binary wins.
+engine_arch=
+for a in %{_arch} %{_target_cpu}; do
+    if [ -f "third_party/prebuilt/$a/stockfish" ]; then
+        engine_arch=$a
+        break
+    fi
+done
+
+if [ -z "$engine_arch" ]; then
     echo "" >&2
     echo "=============================================================" >&2
-    echo " %{name}: no engine for %{_arch}." >&2
+    echo " %{name}: no engine for %{_arch} (%{_target_cpu})." >&2
     echo "" >&2
     echo " Expected: third_party/prebuilt/%{_arch}/stockfish" >&2
+    [ "%{_arch}" = "%{_target_cpu}" ] || \
+        echo "       or: third_party/prebuilt/%{_target_cpu}/stockfish" >&2
     echo "" >&2
     echo " Cross-build it in the Sailfish SDK container as described in" >&2
     echo " chess-spec/platform.md §8.3, strip it, and copy it there:" >&2
@@ -77,8 +92,19 @@ if [ ! -f third_party/prebuilt/%{_arch}/stockfish ]; then
     echo "" >&2
     exit 1
 fi
-if [ ! -x third_party/prebuilt/%{_arch}/stockfish ]; then
-    chmod 0755 third_party/prebuilt/%{_arch}/stockfish
+chmod 0755 "third_party/prebuilt/$engine_arch/stockfish"
+
+# The engine is built with -DNNUE_EMBEDDING_OFF, so the small net is a separate
+# file and the engine is useless without it (platform.md §1.4). Same reasoning
+# as above: better no package than a package that installs and cannot evaluate.
+if [ -z "$(ls assets/*.nnue third_party/prebuilt/net/*.nnue 2>/dev/null)" ]; then
+    echo "" >&2
+    echo " %{name}: no NNUE net in assets/." >&2
+    echo " The engine is built with -DNNUE_EMBEDDING_OFF and needs" >&2
+    echo " nn-37f18f62d772.nnue (3,36 MiB) beside it. tools/fetch-engine.sh" >&2
+    echo " downloads it and checks its hash." >&2
+    echo "" >&2
+    exit 1
 fi
 
 # Syzygy 3+4 men, WDL and DTZ, 70 files (platform.md §2, Empfehlung 2). Ship
@@ -101,7 +127,7 @@ cd build
 cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=%{_prefix} \
-    -DSCHACH_ENGINE_ARCH=%{_arch} \
+    -DSCHACH_ENGINE_ARCH="$engine_arch" \
     -DSCHACH_REQUIRE_ENGINE=ON
 make %{?_smp_mflags}
 
@@ -120,6 +146,16 @@ mkdir -p %{buildroot}%{_datadir}/%{name}/translations
 find %{buildroot}%{_datadir}/%{name} -type d -exec chmod 0755 {} \;
 find %{buildroot}%{_datadir}/%{name} -type f -exec chmod 0644 {} \;
 chmod 0755 %{buildroot}%{_datadir}/%{name}/bin/stockfish
+
+# rpmlint says arch-dependent-file-in-usr-share about the engine, and it is
+# right that this is unusual. It is deliberate: SailfishApp::pathTo() resolves
+# against /usr/share/%{name}, the app looks the engine up there, and the whole
+# directory is the app's own (platform.md §5.3). The fallback if a future
+# Sailjail release ever forbids exec from /usr/share is %{_bindir}/%{name}-engine.
+
+# rpmbuild does not strip for us here; the app binary is ours to strip, the
+# engine came stripped out of the cross-build.
+strip %{buildroot}%{_bindir}/%{name} || :
 
 # GPL duty: the licence of the app and the provenance of everything third
 # party that ships with it (Stockfish GPL-3.0, chess-library MIT, cburnett

@@ -1,0 +1,31 @@
+# Type list of /usr/share/harbour-schachlehrer/qml. CMakeLists.txt copies
+# sailfish/*.qml and this file into that one directory, so `import "."` finds
+# every page and every component, and the singletons are declared here.
+
+singleton Style 1.0 Style.qml
+singleton Prefs 1.0 Prefs.qml
+singleton Dimensions 1.0 Dimensions.qml
+singleton PieceCode 1.0 PieceCode.qml
+singleton MoveList 1.0 MoveList.qml
+
+# The board and its parts (docs/design.md §7).
+Board 1.0 Board.qml
+Piece 1.0 Piece.qml
+
+# Shared strips: the rule "never a number without a sentence" lives in
+# FeedbackPanel, the "engine missing is a normal state" rule in EngineBanner.
+FeedbackPanel 1.0 FeedbackPanel.qml
+EngineBanner 1.0 EngineBanner.qml
+ThinkingIndicator 1.0 ThinkingIndicator.qml
+SkillRow 1.0 SkillRow.qml
+
+# Pages.
+MainPage 1.0 MainPage.qml
+BoardPage 1.0 BoardPage.qml
+PlacementPage 1.0 PlacementPage.qml
+AnalysisPage 1.0 AnalysisPage.qml
+CardsPage 1.0 CardsPage.qml
+RulesPage 1.0 RulesPage.qml
+SettingsPage 1.0 SettingsPage.qml
+AboutPage 1.0 AboutPage.qml
+CoverPage 1.0 CoverPage.qml
