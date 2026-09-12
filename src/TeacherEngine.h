@@ -79,6 +79,15 @@ class TeacherEngine : public QObject
     Q_PROPERTY(QVariantMap session READ session NOTIFY progressChanged)
     Q_PROPERTY(int dueCards READ dueCards NOTIFY progressChanged)
 
+    // --- Lösungen durchsehen ------------------------------------------------
+    // A measurement you cannot look back at teaches nothing. Every answered
+    // item is kept, and the board can step back through them (teacher.md §4.1
+    // allows the solution, only the running right/wrong tally is withheld).
+    Q_PROPERTY(bool reviewing READ reviewing NOTIFY reviewChanged)
+    Q_PROPERTY(int reviewIndex READ reviewIndex NOTIFY reviewChanged)
+    Q_PROPERTY(int reviewCount READ reviewCount NOTIFY reviewChanged)
+    Q_PROPERTY(QVariantMap review READ review NOTIFY reviewChanged)
+
 public:
     enum Mode { Idle = 0, Placement = 1, Drill = 2, Sparring = 3, Review = 4 };
     Q_ENUMS(Mode)
@@ -98,6 +107,10 @@ public:
     QVariantList squares() const;
     QVariantList legalTargets() const;
     int selectedSquare() const { return m_selected; }
+    bool reviewing() const { return m_reviewIndex >= 0; }
+    int reviewIndex() const { return m_reviewIndex; }
+    int reviewCount() const { return m_answered.size(); }
+    QVariantMap review() const;
     void setSelectedSquare(int square);
     bool flipped() const { return m_flipped; }
     void setFlipped(bool flipped);
@@ -127,6 +140,13 @@ public:
     Q_INVOKABLE void analyseCurrentGame();
     Q_INVOKABLE QVariantList lastFindings() const;
 
+    // Step through the answered items. reviewPrevious() from the live test
+    // enters the review at the item just answered; endReview() returns to it.
+    Q_INVOKABLE void reviewPrevious();
+    Q_INVOKABLE void reviewNext();
+    Q_INVOKABLE void reviewItem(int index);
+    Q_INVOKABLE void endReview();
+
 signals:
     void positionChanged();
     void selectionChanged();
@@ -136,6 +156,7 @@ signals:
     void feedbackChanged();
     void engineChanged();
     void progressChanged();
+    void reviewChanged();
 
 private slots:
     void onEngineResult(const schach::EngineResult& result);
@@ -169,6 +190,34 @@ private:
 
     core::Placement* m_placement;
     ItemBank m_items;
+
+    // One answered placement item, kept so the solution can be looked at.
+    struct AnsweredItem {
+        QString itemId;
+        QString fen;          // the position as it was asked
+        QString solution;     // UCI
+        QString solutionSan;
+        QString played;       // what the learner did, empty when skipped
+        QString playedSan;
+        QString explanation;
+        bool correct;
+        int number;           // 1-based position in the test
+        double difficulty;
+    };
+    QVector<AnsweredItem> m_answered;
+    int m_reviewIndex;        // -1 while the test is running
+    QString m_taskFen;        // the position of the running task, for the record
+    QString m_lastAnswer;     // the move just played, empty when skipped
+    // What was on the board when the review was entered, so leaving it again
+    // returns to the same task instead of burning a fresh one.
+    QString m_liveFen;
+    QString m_liveSolution;
+    QString m_livePrompt;
+    QVariantMap m_liveTask;
+    bool m_liveSaved;
+
+    void rememberAnswer(bool correct);
+    void showAnswered(int index);
     QStringList m_usedItems;   // one position is never asked twice in a run
     core::SkillState m_skill;
     core::SessionPlan m_sessionPlan;

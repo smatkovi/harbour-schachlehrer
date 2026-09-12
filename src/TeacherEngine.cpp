@@ -53,6 +53,8 @@ TeacherEngine::TeacherEngine(QObject* parent)
     , m_sparring(new ::schach::Sparring(this))
     , m_opponentTimer(new QTimer(this))
     , m_placement(0)
+    , m_reviewIndex(-1)
+    , m_liveSaved(false)
     , m_sessionIndex(0)
     , m_analysisDone(0)
     , m_analysisTotal(0)
@@ -188,6 +190,11 @@ QVariantList TeacherEngine::moveList() const
 
 QString TeacherEngine::lastMove() const
 {
+    // While looking back, the board marks the move that was right, on the
+    // position it was asked in.
+    if (m_reviewIndex >= 0 && m_reviewIndex < m_answered.size())
+        return m_answered.at(m_reviewIndex).solution;
+
     return QString::fromStdString(m_position.lastMove());
 }
 
@@ -400,7 +407,8 @@ void TeacherEngine::startNewGame(bool learnerPlaysWhite)
 
 bool TeacherEngine::play(int fromSquare, int toSquare, const QString& promotion)
 {
-    if (m_position.gameOver())
+    // Looking at a solved item is reading, not playing.
+    if (m_reviewIndex >= 0 || m_position.gameOver())
         return false;
     std::string uci = core::squareName(fromSquare) + core::squareName(toSquare);
     if (m_position.needsPromotion(fromSquare, toSquare)) {
@@ -418,6 +426,7 @@ bool TeacherEngine::play(int fromSquare, int toSquare, const QString& promotion)
         const bool correct = !m_solutionUci.isEmpty()
                 && (played == m_solutionUci
                     || m_task.value(QStringLiteral("alsoAccepted")).toStringList().contains(played));
+        m_lastAnswer = played;
         m_position.play(uci);
         m_selected = -1;
         emit positionChanged();
@@ -556,7 +565,28 @@ void TeacherEngine::requestHint()
 
 void TeacherEngine::skipTask()
 {
-    if (m_mode == Placement || m_mode == Drill) {
+    if (m_reviewIndex >= 0)
+        return;
+    if (m_mode == Placement) {
+        // "I don't see it" is a valid answer and the page says so — but it has
+        // to be counted as one, or the test never reaches its twenty-five.
+        if (m_placement) {
+            const double difficulty = m_task.value(QStringLiteral("difficulty")).toDouble();
+            const core::Dimension dimension = core::dimensionFromKey(
+                m_task.value(QStringLiteral("dimension")).toString().toStdString());
+            m_placement->record(dimension, difficulty, false);
+        }
+        m_lastAnswer.clear();
+        rememberAnswer(false);
+        setFeedback(m_answered.isEmpty() || m_answered.last().solutionSan.isEmpty()
+                        ? tr("Übersprungen.")
+                        : tr("Übersprungen. Der Zug war %1.").arg(m_answered.last().solutionSan),
+                    QStringLiteral("placement"));
+        m_hintLevel = 0;
+        loadNextTask();
+        return;
+    }
+    if (m_mode == Drill) {
         ++m_sessionIndex;
         m_hintLevel = 0;
         loadNextTask();
@@ -616,6 +646,8 @@ void TeacherEngine::loadNextTask()
         m_position.setFen(item->fen.toStdString());
         m_selected = -1;
         m_solutionUci = item->solution;
+        m_taskFen = item->fen;
+        m_lastAnswer.clear();
 
         QVariantMap task;
         task[QStringLiteral("kind")] = QStringLiteral("placement");
@@ -649,6 +681,135 @@ void TeacherEngine::loadNextTask()
     }
 }
 
+// --- looking back at the solutions --------------------------------------------------
+
+void TeacherEngine::rememberAnswer(bool correct)
+{
+    AnsweredItem entry;
+    entry.itemId = m_task.value(QStringLiteral("itemId")).toString();
+    entry.fen = m_taskFen;
+    entry.solution = m_solutionUci;
+    entry.played = m_lastAnswer;
+    entry.explanation = m_task.value(QStringLiteral("explanationAfterSolving")).toString();
+    entry.correct = correct;
+    entry.number = m_answered.size() + 1;
+    entry.difficulty = m_task.value(QStringLiteral("difficulty")).toDouble();
+
+    // The move reads better as "Sf7+" than as "g5f7"; both are worked out on
+    // the position as it was asked, not on the one now on the board.
+    if (!entry.fen.isEmpty()) {
+        core::Position position;
+        if (position.setFen(entry.fen.toStdString())) {
+            if (!entry.solution.isEmpty())
+                entry.solutionSan = QString::fromStdString(
+                    position.sanOf(entry.solution.toStdString()));
+            if (!entry.played.isEmpty())
+                entry.playedSan = QString::fromStdString(
+                    position.sanOf(entry.played.toStdString()));
+        }
+    }
+    m_answered.append(entry);
+    emit reviewChanged();
+}
+
+QVariantMap TeacherEngine::review() const
+{
+    QVariantMap map;
+    if (m_reviewIndex < 0 || m_reviewIndex >= m_answered.size())
+        return map;
+    const AnsweredItem& entry = m_answered.at(m_reviewIndex);
+    map[QStringLiteral("number")] = entry.number;
+    map[QStringLiteral("total")] = m_answered.size();
+    map[QStringLiteral("correct")] = entry.correct;
+    map[QStringLiteral("solution")] = entry.solution;
+    map[QStringLiteral("solutionSan")] = entry.solutionSan;
+    map[QStringLiteral("played")] = entry.played;
+    map[QStringLiteral("playedSan")] = entry.playedSan;
+    map[QStringLiteral("skipped")] = entry.played.isEmpty();
+    map[QStringLiteral("explanation")] = entry.explanation;
+    map[QStringLiteral("difficulty")] = static_cast<int>(entry.difficulty);
+    return map;
+}
+
+void TeacherEngine::showAnswered(int index)
+{
+    if (index < 0 || index >= m_answered.size())
+        return;
+    if (m_reviewIndex < 0) {
+        m_liveFen = QString::fromStdString(m_position.fen());
+        m_liveSolution = m_solutionUci;
+        m_livePrompt = m_prompt;
+        m_liveTask = m_task;
+        m_liveSaved = true;
+    }
+    m_reviewIndex = index;
+    const AnsweredItem& entry = m_answered.at(index);
+    m_position.setFen(entry.fen.toStdString());
+    m_selected = -1;
+    // The board highlights lastMove(); while reviewing that is the solution,
+    // so the right move is marked on the position it was asked in.
+    setPrompt(entry.correct
+                  ? tr("Aufgabe %1 von %2 — richtig.").arg(entry.number).arg(m_answered.size())
+                  : tr("Aufgabe %1 von %2.").arg(entry.number).arg(m_answered.size()));
+    QString text;
+    if (!entry.solutionSan.isEmpty())
+        text = tr("Der Zug war %1.").arg(entry.solutionSan);
+    if (!entry.correct && !entry.playedSan.isEmpty())
+        text = tr("Du hast %1 gespielt, richtig war %2.").arg(entry.playedSan, entry.solutionSan);
+    else if (!entry.correct && entry.played.isEmpty())
+        text = tr("Übersprungen. Richtig war %1.").arg(entry.solutionSan);
+    if (!entry.explanation.isEmpty())
+        text += QStringLiteral(" ") + entry.explanation;
+    setFeedback(text, QStringLiteral("review"));
+    emit positionChanged();
+    emit selectionChanged();
+    emit taskChanged();
+    emit reviewChanged();
+}
+
+void TeacherEngine::reviewPrevious()
+{
+    if (m_answered.isEmpty())
+        return;
+    showAnswered(m_reviewIndex < 0 ? m_answered.size() - 1 : m_reviewIndex - 1);
+}
+
+void TeacherEngine::reviewNext()
+{
+    if (m_reviewIndex >= 0 && m_reviewIndex + 1 < m_answered.size())
+        showAnswered(m_reviewIndex + 1);
+    else if (m_reviewIndex >= 0)
+        endReview();
+}
+
+void TeacherEngine::reviewItem(int index)
+{
+    showAnswered(index);
+}
+
+void TeacherEngine::endReview()
+{
+    if (m_reviewIndex < 0)
+        return;
+    m_reviewIndex = -1;
+    emit reviewChanged();
+    // Back to exactly where the test stood — the same item, not a fresh one.
+    if (m_liveSaved) {
+        if (!m_liveFen.isEmpty())
+            m_position.setFen(m_liveFen.toStdString());
+        m_solutionUci = m_liveSolution;
+        m_task = m_liveTask;
+        setPrompt(m_livePrompt);
+        setFeedback(QString(), QString());
+        m_selected = -1;
+        m_liveSaved = false;
+        m_taskClock.restart();
+    }
+    emit positionChanged();
+    emit selectionChanged();
+    emit taskChanged();
+}
+
 void TeacherEngine::presentCard(const core::Card& card)
 {
     m_currentCardId = QString::fromStdString(card.id);
@@ -679,10 +840,12 @@ void TeacherEngine::finishDrillTask(bool correct, int milliseconds)
         const core::Dimension dimension =
                 core::dimensionFromKey(m_task.value(QStringLiteral("dimension")).toString().toStdString());
         m_placement->record(dimension, difficulty, correct);
+        rememberAnswer(correct);
         // §4.1: no right/wrong signal after every item, only the solution.
         setFeedback(correct ? tr("So geht es.") : tr("Hier war %1 besser.")
-                                      .arg(m_solutionUci.isEmpty() ? tr("ein anderer Zug")
-                                                                   : m_solutionUci),
+                                      .arg(m_answered.isEmpty() || m_answered.last().solutionSan.isEmpty()
+                                               ? tr("ein anderer Zug")
+                                               : m_answered.last().solutionSan),
                     QStringLiteral("placement"));
         loadNextTask();
         return;

@@ -63,8 +63,9 @@ Page {
 
             PageHeader {
                 title: qsTr("Einstufung")
-                description: page.started ? qsTr("Aufgabe %1").arg(page.taskNumber())
-                                          : qsTr("etwa zehn Minuten")
+                description: teacher.reviewing ? qsTr("Lösungen")
+                                               : (page.started ? qsTr("Aufgabe %1").arg(page.taskNumber())
+                                                               : qsTr("etwa zehn Minuten"))
             }
 
             EngineBanner { }
@@ -95,7 +96,7 @@ Page {
                     wrapMode: Text.WordWrap
                     color: Style.secondaryColor
                     font.pixelSize: Style.fontSizeExtraSmall
-                    text: qsTr("Es gibt keinen Hinweis und keine Rücknahme. Wenn du eine Stellung nicht siehst, überspringe sie — das ist eine gültige Antwort.")
+                    text: qsTr("Es gibt keinen Hinweis und keine Rücknahme. Wenn du eine Stellung nicht siehst, überspringe sie — das ist eine gültige Antwort. Die Lösung kannst du dir danach jederzeit ansehen.")
                 }
 
                 Button {
@@ -122,7 +123,7 @@ Page {
                 visible: page.started
                 width: page.width - 2 * Style.paddingSmall
                 height: visible ? width : 0
-                interactive: page.started && !teacher.thinking
+                interactive: page.started && !teacher.thinking && !teacher.reviewing
                 // No hint marks during a measurement: the legal-target dots
                 // would turn a calculation task into a multiple choice.
                 showLegalTargets: false
@@ -142,9 +143,47 @@ Page {
 
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
-                visible: page.started
+                visible: page.started && !teacher.reviewing
                 text: qsTr("Überspringen")
                 onClicked: teacher.skipTask()
+            }
+
+            // ---- Lösungen durchsehen -------------------------------------
+            // A measurement you cannot look back at teaches nothing. The
+            // buttons appear as soon as there is something to look at.
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: Style.paddingMedium
+                visible: page.started && teacher.reviewCount > 0
+
+                Button {
+                    text: teacher.reviewing ? qsTr("Zurück") : qsTr("Lösung ansehen")
+                    enabled: !teacher.reviewing || teacher.reviewIndex > 0
+                    onClicked: teacher.reviewPrevious()
+                }
+                Button {
+                    visible: teacher.reviewing
+                    text: teacher.reviewIndex + 1 < teacher.reviewCount ? qsTr("Weiter")
+                                                                        : qsTr("Zum Test")
+                    onClicked: teacher.reviewNext()
+                }
+                Button {
+                    visible: teacher.reviewing
+                    text: qsTr("Weitermachen")
+                    onClicked: teacher.endReview()
+                }
+            }
+
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                visible: teacher.reviewing
+                wrapMode: Text.WordWrap
+                color: Style.secondaryColor
+                font.pixelSize: Style.fontSizeExtraSmall
+                text: qsTr("Aufgabe %1 von %2 · der markierte Zug ist die Lösung")
+                      .arg(teacher.review && teacher.review.number ? teacher.review.number : 0)
+                      .arg(teacher.reviewCount)
             }
 
             // ---- Das Ergebnis --------------------------------------------
@@ -166,7 +205,7 @@ Page {
         var t = teacher.task
         if (!t)
             return ""
-        if (t.index !== undefined) return "" + (Number(t.index) + 1)
+        if (t.index !== undefined) return "" + Number(t.index)
         if (t.number !== undefined) return "" + t.number
         if (t.n !== undefined) return "" + t.n
         return ""
