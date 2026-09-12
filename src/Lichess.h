@@ -235,6 +235,10 @@ public:
     // Revokes the token on the server (DELETE /api/token), deletes the file
     // and closes every stream. Visible in the UI as "Abmelden".
     void logOut();
+    // Abandon a login that is under way: shuts the local listener, forgets the
+    // verifier and goes back to a state the user can act in. Without this a
+    // login that never comes back leaves the app waiting for ever.
+    void cancelLogIn();
 
     void refreshAccount();
     void refreshChallenges();

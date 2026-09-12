@@ -1529,6 +1529,17 @@ void TeacherEngine::beginLiveGame(const QString& gameId)
     emit onlineGameChanged();
 }
 
+void TeacherEngine::leaveOnline()
+{
+    endLiveGame();
+    if (m_mode == Online)
+        setMode(Idle);
+    setPrompt(QString());
+    setFeedback(QString(), QString());
+    emit onlineGameChanged();
+    emit progressChanged();
+}
+
 void TeacherEngine::endLiveGame()
 {
     if (m_liveGameId.isEmpty())
@@ -1858,6 +1869,8 @@ void TeacherEngine::onOnlineGameFinished(const QString& gameId, const QString& s
 // --- what QML calls ----------------------------------------------------------
 
 void TeacherEngine::lichessLogIn() { m_lichess->logIn(); }
+
+void TeacherEngine::lichessCancelLogIn() { m_lichess->cancelLogIn(); }
 
 void TeacherEngine::lichessLogOut()
 {

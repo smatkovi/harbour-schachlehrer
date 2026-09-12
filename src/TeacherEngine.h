@@ -225,6 +225,7 @@ public:
     // --- Lichess -------------------------------------------------------------
     Q_INVOKABLE void lichessLogIn();
     Q_INVOKABLE void lichessLogOut();
+    Q_INVOKABLE void lichessCancelLogIn();
     Q_INVOKABLE void lichessRefresh();
     // §3.2: the seek only reaches rapid, classical and correspondence. Blitz
     // would need a direct challenge and is the wrong format for learning.
@@ -262,6 +263,10 @@ public:
     Q_INVOKABLE void reviewNext();
     Q_INVOKABLE void reviewItem(int index);
     Q_INVOKABLE void endReview();
+    // Leave the online state no matter what the client thinks: clears the live
+    // game, unlocks the engine and goes back to Idle. The way out of a half
+    // finished conversation with the server, and reachable from the UI.
+    Q_INVOKABLE void leaveOnline();
 
 signals:
     void positionChanged();

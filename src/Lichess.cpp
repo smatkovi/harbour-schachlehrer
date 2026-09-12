@@ -658,6 +658,20 @@ void Lichess::exchangeCode(const QString& code)
     enqueue(request);
 }
 
+void Lichess::cancelLogIn()
+{
+    if (m_state != Authorising)
+        return;
+    m_authTimeout->stop();
+    stopRedirectServer();
+    m_verifier.clear();
+    m_oauthState.clear();
+    m_authUrl.clear();
+    setState(m_token.isEmpty() ? LoggedOut : LoggedIn);
+    setMessage(tr("Anmeldung abgebrochen. Alles andere in dieser App funktioniert ohne Konto."));
+    emit stateChanged();
+}
+
 void Lichess::logOut()
 {
     if (!m_token.isEmpty()) {

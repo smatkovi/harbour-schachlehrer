@@ -161,6 +161,27 @@ Page {
                 }
             }
 
+            // A login that never comes back must not be a dead end.
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: page.authorising
+                text: qsTr("Anmeldung abbrechen")
+                onClicked: teacher.lichessCancelLogIn()
+            }
+
+            // If the browser cannot be opened, the address is still usable by
+            // hand — on a phone that is sometimes the only way through.
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                visible: page.authorising && teacher.lichessAuthUrl !== ""
+                wrapMode: Text.WrapAnywhere
+                color: Style.secondaryColor
+                font.pixelSize: Style.fontSizeExtraSmall
+                text: qsTr("Öffnet sich der Browser nicht, ruf diese Adresse auf: %1")
+                      .arg(teacher.lichessAuthUrl)
+            }
+
             Label {
                 x: Style.horizontalPageMargin
                 width: parent.width - 2 * Style.horizontalPageMargin

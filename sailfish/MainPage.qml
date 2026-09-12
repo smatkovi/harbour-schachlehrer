@@ -240,7 +240,15 @@ Page {
             Item { width: 1; height: Style.paddingMedium }
 
             // ---- Online spielen ----------------------------------------
-            SectionHeader { text: qsTr("Online spielen") }
+            // M8. The protocol handling and the fair-play lock are covered by
+            // test_lichess and test_fairplay; what no test can reach is the
+            // round trip through the browser on a real device.
+            readonly property bool onlineReady: true
+
+            SectionHeader {
+                text: qsTr("Online spielen")
+                visible: content.onlineReady || teacher.liveGame
+            }
 
             Label {
                 x: Style.horizontalPageMargin
@@ -248,6 +256,7 @@ Page {
                 wrapMode: Text.WordWrap
                 color: Style.secondaryColor
                 font.pixelSize: Style.fontSizeExtraSmall
+                visible: content.onlineReady || teacher.liveGame
                 text: teacher.liveGame
                       ? qsTr("Deine Lichess-Partie läuft. Solange sie läuft, ist die Engine aus — nach der Partie sehen wir sie uns an.")
                       : qsTr("Gegen echte Gegner auf Lichess spielen, und die eigenen Lichess-Partien als Material für die Fehlerdiagnose holen. Freiwillig: alles andere in dieser App funktioniert ohne Konto.")
@@ -255,6 +264,7 @@ Page {
 
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
+                visible: content.onlineReady
                 text: teacher.liveGame ? qsTr("Zurück zur laufenden Partie")
                                        : qsTr("Lichess")
                 onClicked: {
@@ -263,6 +273,14 @@ Page {
                     else
                         pageStack.push(Qt.resolvedUrl("LichessPage.qml"))
                 }
+            }
+
+            // The way out, should the app ever get stuck in the online state.
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: teacher.liveGame
+                text: qsTr("Online verlassen")
+                onClicked: teacher.leaveOnline()
             }
 
             // ---- Der Rest ----------------------------------------------

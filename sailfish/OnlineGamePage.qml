@@ -202,6 +202,27 @@ Page {
                 onMoveRejected: teacher.selectedSquare = -1
             }
 
+            // A board that does not react must say why, or it reads as broken.
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                visible: text !== ""
+                wrapMode: Text.WordWrap
+                color: Style.secondaryColor
+                font.pixelSize: Style.fontSizeExtraSmall
+                text: {
+                    if (!teacher.lichessLoggedIn)
+                        return qsTr("Nicht angemeldet — ohne Konto lässt sich hier nicht ziehen.")
+                    if (!page.live)
+                        return qsTr("Gerade läuft keine Partie. Such dir auf der Lichess-Seite eine.")
+                    if (page.game.finished)
+                        return qsTr("Die Partie ist vorbei.")
+                    if (!page.game.ourTurn)
+                        return qsTr("Dein Gegner ist am Zug.")
+                    return ""
+                }
+            }
+
             // ---- Was gerade zu entscheiden ist ---------------------------
             FeedbackPanel {
                 width: parent.width
