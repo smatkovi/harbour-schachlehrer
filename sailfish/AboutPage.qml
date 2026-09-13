@@ -72,7 +72,7 @@ Page {
                 wrapMode: Text.WordWrap
                 color: Style.secondaryColor
                 font.pixelSize: Style.fontSizeExtraSmall
-                text: qsTr("Version %1 · GPL-3.0-or-later · Copyright 2026 smatkovi").arg("0.1.0")
+                text: qsTr("Version %1 · GPL-3.0-or-later · Copyright 2026 smatkovi").arg("0.1.1")
             }
 
             SectionHeader { text: qsTr("Was diese App anders macht") }

@@ -1,5 +1,5 @@
 Name:    harbour-schachlehrer
-Version: 0.1.0
+Version: 0.1.1
 Release: 1
 Summary: Chess coach for Sailfish OS: measure, play, diagnose, drill
 License: GPL-3.0-or-later
@@ -203,6 +203,13 @@ exit 0
 %{_datadir}/licenses/%{name}
 
 %changelog
+* Sun Sep 13 2026 smatkovi - 0.1.1-1
+- The engine evaluates again: both network options point at the small net,
+  and an engine error after the handshake reaches the screen.
+- Online play has a way out of every state; the live board says why it is
+  not taking a move.
+- Starter cards are stored before the first answer, so a solved task is
+  scheduled; the placement test gives no hints.
 * Sat Sep 12 2026 smatkovi - 0.1.0-1
 - M0: package skeleton. Board, cards and rules work without the engine; the
   engine binary and the Syzygy 3+4 tablebases ship inside the package.
