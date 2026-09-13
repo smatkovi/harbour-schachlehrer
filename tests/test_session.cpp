@@ -22,7 +22,9 @@
 // it stops after the first task, so this walks a whole session the way the
 // board does: read the task, play its solution, expect the next one.
 #include "TeacherEngine.h"
+#include "Database.h"
 #include "core/Position.h"
+#include "core/Srs.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -121,6 +123,22 @@ int main(int argc, char** argv)
 
     std::printf("test_session: %d Aufgaben gelöst, %d verschiedene\n", solved, seen.size());
     CHECK(solved >= 2);
+
+    // A solved task has to leave a trace, or nothing is scheduled and the hint
+    // the learner needed is forgotten with it.
+    Database db;
+    CHECK(db.open(tmp.path() + QStringLiteral("/test.sqlite")));
+    core::Card stored;
+    CHECK(db.loadCard(seen.value(0), stored));
+    CHECK(stored.srs.reps >= 1);
+
+    // And a hint must cost something: the same task answered with a hint is
+    // graded Hard, so it comes back sooner than one answered unaided.
+    const core::SrsState clean = core::applyReview(core::SrsState(), core::Rating::Good, 0);
+    const core::SrsState hinted = core::applyReview(core::SrsState(), core::Rating::Hard, 0);
+    CHECK(hinted.dueDay <= clean.dueDay);
+    CHECK(core::ratingFor(true, true, 1000) == core::Rating::Hard);
+    CHECK(core::ratingFor(true, false, 1000) == core::Rating::Easy);
     if (failures) {
         std::printf("%d Fehler\n", failures);
         return 1;

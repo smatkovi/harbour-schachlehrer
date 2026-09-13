@@ -686,6 +686,16 @@ void TeacherEngine::startSession()
     if (m_sessionCards.isEmpty()) {
         m_sessionCards = starterCards(newDimension);
         starter = !m_sessionCards.isEmpty();
+        // They have to be in the database before the first answer, otherwise
+        // the review has no card to attach to: the grade, the hint and the
+        // schedule would all be forgotten the moment the task is over.
+        for (int i = 0; i < m_sessionCards.size(); ++i) {
+            core::Card stored;
+            if (m_database->loadCard(QString::fromStdString(m_sessionCards.at(i).id), stored))
+                m_sessionCards[i] = stored;     // keep what an earlier session learned
+            else
+                m_database->upsertCard(m_sessionCards.at(i));
+        }
     }
     m_sessionIndex = 0;
     setMode(Drill);
@@ -920,6 +930,15 @@ void TeacherEngine::requestHint()
     // says why.
     if (refusedWhileLive())
         return;
+    if (m_mode == Placement) {
+        // §4.1: the placement test measures what you see unaided. A hint here
+        // would measure the hint.
+        setFeedback(tr("Im Einstufungstest gibt es keinen Hinweis. Wenn du eine "
+                       "Stellung nicht siehst, überspring sie — das ist eine "
+                       "gültige Antwort."),
+                    QStringLiteral("placement"));
+        return;
+    }
     // teacher.md §6.6: four levels, and none of them names the theme.
     ++m_hintLevel;
     switch (m_hintLevel) {
@@ -1228,6 +1247,8 @@ QVector<core::Card> TeacherEngine::starterCards(core::Dimension dimension) const
         card.origin = core::CardOrigin::Library;
         card.seedFen = item->fen.toStdString();
         card.solutionUci = item->solution.toStdString();
+        card.createdDay = today();
+        card.srs.dueDay = today();
         cards.append(card);
     }
     return cards;
