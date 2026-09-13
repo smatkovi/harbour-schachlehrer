@@ -230,7 +230,7 @@ if(SCHACH_BUILD_TESTS)
     # the Lichess protocol lives in Lichess/GameSync. They link Network and Sql
     # as well and get SCHACH_SOURCE_DIR so test_fairplay can grep the tree for
     # the Bot API upgrade endpoint that must not exist (§3.1).
-    set(SCHACH_QT_TESTS test_fairplay test_lichess)
+    set(SCHACH_QT_TESTS test_fairplay test_lichess test_session)
     # Anything else the other author drops into tests/ is picked up as well.
     file(GLOB SCHACH_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_*.cpp)
     foreach(src IN LISTS SCHACH_TEST_SOURCES)
@@ -262,6 +262,9 @@ if(SCHACH_BUILD_TESTS)
                 target_link_libraries(${t} Qt5::Core)
             endif()
             add_test(NAME ${t} COMMAND ${t})
+            # test_session finds the item bank through the environment.
+            set_tests_properties(${t} PROPERTIES
+                ENVIRONMENT "SCHACH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
         else()
             message(STATUS "${SCHACH_APP}: tests/${t}.cpp is not there yet, skipping it")
         endif()
