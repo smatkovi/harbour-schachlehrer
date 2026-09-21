@@ -55,7 +55,7 @@ QString joinLine(const std::vector<std::string>& line)
     QStringList out;
     for (std::size_t i = 0; i < line.size(); ++i)
         out << QString::fromStdString(line[i]);
-    return out.join(QLatin1Char(' '));
+    return out.join(QString::fromLatin1(" "));
 }
 
 std::vector<std::string> splitLine(const QString& text)

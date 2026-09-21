@@ -21,6 +21,8 @@
 #include "Sparring.h"
 #include "core/WinProb.h"
 
+#include <QStringList>
+
 #include <algorithm>
 #include <cmath>
 

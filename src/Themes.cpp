@@ -113,14 +113,14 @@ core::Dimension Themes::dimensionOf(const QSet<QString>& themes) const
 {
     for (int i = 0; i < m_byDimension.size(); ++i) {
         const Entry& entry = m_byDimension.at(i);
-        if (!themes.intersects(entry.themes))
+        if ((themes & entry.themes).isEmpty())
             continue;
         // A quiet position with no motif in it is the STL question: what is
         // there to *do* here? A quiet move that executes a fork is a TAK item
         // that happens to be quiet. Keeping the two questions apart is what
         // lets §6.3's quota be filled across all six dimensions instead of
         // piling every quiet position into STL.
-        if (entry.key == QLatin1String("STL") && themes.intersects(m_motifs))
+        if (entry.key == QLatin1String("STL") && !(themes & m_motifs).isEmpty())
             continue;
         return core::dimensionFromKey(entry.key.toStdString());
     }
@@ -130,7 +130,7 @@ core::Dimension Themes::dimensionOf(const QSet<QString>& themes) const
 QString Themes::sortOf(const QSet<QString>& themes) const
 {
     for (int i = 0; i < m_bySort.size(); ++i) {
-        if (themes.intersects(m_bySort.at(i).themes))
+        if (!(themes & m_bySort.at(i).themes).isEmpty())
             return m_bySort.at(i).key;
     }
     return QStringLiteral("other");

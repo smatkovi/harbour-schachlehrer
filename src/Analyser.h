@@ -93,7 +93,12 @@ public:
 
 signals:
     void progress(int done, int total);
-    void finished(const QVector<core::Finding>& findings);
+    // Fully qualified on purpose: moc 4.7 records a signal signature exactly
+    // as it is written, so "core::Finding" there does not match the
+    // "schach::core::Finding" the connect names, and Qt reports "No such
+    // signal" at runtime. Qt 5's moc qualifies it either way, so spelling it
+    // out suits both.
+    void finished(const QVector<schach::core::Finding>& findings);
     void failed(const QString& reason);
 
 private slots:

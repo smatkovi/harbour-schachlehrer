@@ -1618,7 +1618,7 @@ QString TeacherEngine::lineSan(const QString& fen, const QStringList& line)
 {
     core::Position position;
     if (!position.setFen(fen.toStdString()))
-        return line.join(QLatin1Char(' '));
+        return line.join(QString::fromLatin1(" "));
     QStringList out;
     for (int i = 0; i < line.size(); ++i) {
         const std::string uci = line.at(i).toStdString();
@@ -1628,7 +1628,7 @@ QString TeacherEngine::lineSan(const QString& fen, const QStringList& line)
         out << QString::fromStdString(san);
         position.play(uci);
     }
-    return out.join(QLatin1Char(' '));
+    return out.join(QString::fromLatin1(" "));
 }
 
 // The board the learner sees follows the line they are composing — that is

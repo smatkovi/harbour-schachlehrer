@@ -1,0 +1,4 @@
+// Qt 4 shim: the shared code only uses QGuiApplication::clipboard().
+#pragma once
+#include <QApplication>
+typedef QApplication QGuiApplication;

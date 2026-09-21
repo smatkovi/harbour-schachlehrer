@@ -38,6 +38,18 @@
 #include <QTimer>
 #include <QUrl>
 #include <QUrlQuery>
+
+// The MeeGo Harmattan build force-includes meego/compat/qt4compat.h, which
+// defines these for Qt 4.7: that Qt has no SHA-256 at all and no component
+// formatting on QUrl. Everywhere else they are the plain Qt 5 spellings, so
+// this file compiles unchanged for Sailfish OS.
+#ifndef SCHACH_SHA256
+#define SCHACH_SHA256(data) QCryptographicHash::hash((data), QCryptographicHash::Sha256)
+#endif
+#ifndef SCHACH_URL_DECODED
+#define SCHACH_URL_DECODED QUrl::FullyDecoded
+#define SCHACH_URL_ENCODED QUrl::FullyEncoded
+#endif
 #include <QtGlobal>
 
 namespace schach {
@@ -99,7 +111,7 @@ QString makeVerifier()
 QString challengeFor(const QString& verifier)
 {
     // S256 is the only method Lichess accepts (§3.3).
-    return base64Url(QCryptographicHash::hash(verifier.toLatin1(), QCryptographicHash::Sha256));
+    return base64Url(SCHACH_SHA256(verifier.toLatin1()));
 }
 
 QString percent(const QString& value)
@@ -598,9 +610,9 @@ void Lichess::onRedirectConnection()
         const QUrl url(QStringLiteral("http://127.0.0.1") + QString::fromLatin1(parts.at(1)));
         if (url.path() == QLatin1String("/cb")) {
             const QUrlQuery query(url);
-            code = query.queryItemValue(QStringLiteral("code"), QUrl::FullyDecoded);
-            returnedState = query.queryItemValue(QStringLiteral("state"), QUrl::FullyDecoded);
-            error = query.queryItemValue(QStringLiteral("error"), QUrl::FullyDecoded);
+            code = query.queryItemValue(QStringLiteral("code"), SCHACH_URL_DECODED);
+            returnedState = query.queryItemValue(QStringLiteral("state"), SCHACH_URL_DECODED);
+            error = query.queryItemValue(QStringLiteral("error"), SCHACH_URL_DECODED);
         }
     }
 
@@ -662,7 +674,7 @@ void Lichess::exchangeCode(const QString& code)
     form.addQueryItem(QStringLiteral("code_verifier"), m_verifier);
     form.addQueryItem(QStringLiteral("redirect_uri"), m_redirectUri);
     form.addQueryItem(QStringLiteral("client_id"), QString::fromLatin1(kClientId));
-    request.body = form.toString(QUrl::FullyEncoded).toUtf8();
+    request.body = form.toString(SCHACH_URL_ENCODED).toUtf8();
     enqueue(request);
 }
 
@@ -1253,7 +1265,7 @@ void Lichess::seek(int minutes, int increment, bool rated)
     // §3.5 step 2: this request blocks by design. The body is only blank
     // lines, and closing the connection cancels the seek — so it is held open
     // and never waited on.
-    m_seekReply = m_net->post(request, form.toString(QUrl::FullyEncoded).toUtf8());
+    m_seekReply = m_net->post(request, form.toString(SCHACH_URL_ENCODED).toUtf8());
     connect(m_seekReply, SIGNAL(finished()), this, SLOT(onSeekFinished()));
     setMessage(tr("Ich suche einen Gegner. Das kann einen Moment dauern."));
     emit seekingChanged();
@@ -1275,7 +1287,7 @@ void Lichess::seekCorrespondence(int daysPerTurn, bool rated)
                       QStringLiteral("application/x-www-form-urlencoded"));
     // Correspondence returns at once with {"id": …} and the seek stays on the
     // server (§3.5 step 2).
-    m_seekReply = m_net->post(request, form.toString(QUrl::FullyEncoded).toUtf8());
+    m_seekReply = m_net->post(request, form.toString(SCHACH_URL_ENCODED).toUtf8());
     connect(m_seekReply, SIGNAL(finished()), this, SLOT(onSeekFinished()));
     setMessage(tr("Die Fernschach-Anzeige ist aufgegeben. Du bekommst Bescheid, "
                   "sobald jemand sie annimmt."));
@@ -1329,7 +1341,7 @@ void Lichess::challengeAi(int level, int minutes, int increment)
     form.addQueryItem(QStringLiteral("level"), QString::number(qBound(1, level, 8)));
     form.addQueryItem(QStringLiteral("clock.limit"), QString::number(minutes * 60));
     form.addQueryItem(QStringLiteral("clock.increment"), QString::number(increment));
-    request.body = form.toString(QUrl::FullyEncoded).toUtf8();
+    request.body = form.toString(SCHACH_URL_ENCODED).toUtf8();
     enqueue(request);
 }
 

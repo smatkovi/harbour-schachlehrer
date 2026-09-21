@@ -1,0 +1,50 @@
+// Qt 4 shim for the Qt 5 class. Snapszer's version answered with an empty
+// string because its caller had a documented fallback; this app builds a
+// database path out of it, and an empty answer gave
+// "QDir::mkpath: Empty or null file name(s)" followed by
+// "QSqlQuery::exec: database not open". So it returns the real XDG paths,
+// which is where Qt 5 would put them on this device too.
+#pragma once
+#include <QCoreApplication>
+#include <QDir>
+#include <QString>
+#include <QtGlobal>
+
+class QStandardPaths
+{
+public:
+    enum StandardLocation {
+        AppConfigLocation, ConfigLocation, AppDataLocation, DataLocation,
+        GenericDataLocation, CacheLocation, HomeLocation, TempLocation
+    };
+
+    static QString writableLocation(StandardLocation type)
+    {
+        const QString home = QDir::homePath();
+        const QString org = QCoreApplication::organizationName();
+        const QString app = QCoreApplication::applicationName();
+        QString suffix;
+        if (!org.isEmpty())
+            suffix += QLatin1Char('/') + org;
+        if (!app.isEmpty())
+            suffix += QLatin1Char('/') + app;
+
+        switch (type) {
+        case HomeLocation:
+            return home;
+        case TempLocation:
+            return QDir::tempPath();
+        case GenericDataLocation:
+            return home + QLatin1String("/.local/share");
+        case CacheLocation:
+            return home + QLatin1String("/.cache") + suffix;
+        case ConfigLocation:
+        case AppConfigLocation:
+            return home + QLatin1String("/.config") + suffix;
+        case AppDataLocation:
+        case DataLocation:
+        default:
+            return home + QLatin1String("/.local/share") + suffix;
+        }
+    }
+};

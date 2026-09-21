@@ -401,7 +401,7 @@ void EngineProcess::finishCurrent(bool ok, const QString& error)
     // Trim the MultiPV slots the engine never filled (fewer legal moves than
     // requested lines, or a search that was cut short).
     while (!done.lines.isEmpty() && !done.lines.last().score.valid)
-        done.lines.removeLast();
+        done.lines.remove(done.lines.size() - 1);
     m_current = EngineRequest();
     m_partial = EngineResult();
     emit busyChanged();

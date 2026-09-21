@@ -364,7 +364,7 @@ signals:
 private slots:
     void onEngineResult(const schach::EngineResult& result);
     void onEngineFailed(const QString& reason);
-    void onAnalysisFinished(const QVector<core::Finding>& findings);
+    void onAnalysisFinished(const QVector<schach::core::Finding>& findings);
     void onAnalysisProgress(int done, int total);
     void onChanceMissed(const QString& fen, int errorClass);
     void onOpponentTurn();
