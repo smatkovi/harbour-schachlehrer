@@ -1,0 +1,189 @@
+{
+ "_comment": [
+  "Which Lichess puzzle theme means what, in one place, because two programs need",
+  "the same answer: tools/import_lichess_puzzles.py builds assets/items/puzzles.json",
+  "from the CC0 database export on a build host, and src/PuzzleFeed.cpp turns the",
+  "puzzles that the Lichess API hands the phone into the same item format. If these",
+  "tables lived twice, the two banks would drift apart and nobody would notice.",
+  "",
+  "The mapping is a judgement call against chess-spec/teacher.md §3.1, not a fact.",
+  "It is written out here so that it can be argued with."
+ ],
+ "dimensionOrder": [
+  "END",
+  "ERD",
+  "REC",
+  "SRG",
+  "STL"
+ ],
+ "dimensionThemes": {
+  "END": [
+   "bishopEndgame",
+   "endgame",
+   "knightEndgame",
+   "pawnEndgame",
+   "queenEndgame",
+   "queenRookEndgame",
+   "rookEndgame",
+   "zugzwang"
+  ],
+  "ERD": [
+   "opening"
+  ],
+  "REC": [
+   "long",
+   "veryLong"
+  ],
+  "SRG": [
+   "capturingDefender",
+   "hangingPiece",
+   "trappedPiece"
+  ],
+  "STL": [
+   "advancedPawn",
+   "quietMove"
+  ]
+ },
+ "defaultDimension": "TAK",
+ "motifThemes": [
+  "anastasiaMate",
+  "arabianMate",
+  "attraction",
+  "backRankMate",
+  "bodenMate",
+  "clearance",
+  "deflection",
+  "discoveredAttack",
+  "doubleBishopMate",
+  "doubleCheck",
+  "dovetailMate",
+  "fork",
+  "hookMate",
+  "interference",
+  "intermezzo",
+  "killBoxMate",
+  "mateIn1",
+  "mateIn2",
+  "mateIn3",
+  "mateIn4",
+  "mateIn5",
+  "pin",
+  "promotion",
+  "sacrifice",
+  "skewer",
+  "smotheredMate",
+  "underPromotion",
+  "vukovicMate",
+  "xRayAttack"
+ ],
+ "quota": {
+  "quiet": 0.25,
+  "defensive": 0.15
+ },
+ "sortThemes": {
+  "quiet": [
+   "quietMove"
+  ],
+  "defensive": [
+   "defensiveMove"
+  ]
+ },
+ "sentences": [
+  {
+   "theme": "smotheredMate",
+   "text": "Ersticktes Matt: der eigene König steht sich selbst im Weg."
+  },
+  {
+   "theme": "mateIn1",
+   "text": "Am Ende steht das Matt."
+  },
+  {
+   "theme": "backRankMate",
+   "text": "Grundreihenmatt: die eigenen Bauern nehmen dem König das Luftloch."
+  },
+  {
+   "theme": "doubleCheck",
+   "text": "Doppelschach: gegen zwei Schachgebote hilft nur der Königszug."
+  },
+  {
+   "theme": "fork",
+   "text": "Eine Gabel: ein Stein greift zwei auf einmal an."
+  },
+  {
+   "theme": "pin",
+   "text": "Eine Fesselung: der Stein darf nicht weg, weil dahinter mehr steht."
+  },
+  {
+   "theme": "skewer",
+   "text": "Ein Spieß: der wertvollere Stein muss weichen und gibt den dahinter frei."
+  },
+  {
+   "theme": "discoveredAttack",
+   "text": "Ein Abzugsangriff: der ziehende Stein legt die Linie eines anderen frei."
+  },
+  {
+   "theme": "deflection",
+   "text": "Ablenkung: der Verteidiger wird von seiner Aufgabe weggezogen."
+  },
+  {
+   "theme": "attraction",
+   "text": "Hinlenkung: der Stein wird auf ein Feld gelockt, auf dem er schlecht steht."
+  },
+  {
+   "theme": "clearance",
+   "text": "Räumung: ein eigenes Feld oder eine eigene Linie wird frei gemacht."
+  },
+  {
+   "theme": "interference",
+   "text": "Störung: die Verbindung zwischen zwei gegnerischen Steinen wird unterbrochen."
+  },
+  {
+   "theme": "xRayAttack",
+   "text": "Röntgenangriff: die Wirkung geht durch einen Stein hindurch."
+  },
+  {
+   "theme": "sacrifice",
+   "text": "Ein Opfer: Material gegen etwas, das mehr wert ist."
+  },
+  {
+   "theme": "zugzwang",
+   "text": "Zugzwang: er muss ziehen und jeder Zug verschlechtert seine Stellung."
+  },
+  {
+   "theme": "capturingDefender",
+   "text": "Der Verteidiger wird geschlagen; danach hält das Feld nicht mehr."
+  },
+  {
+   "theme": "trappedPiece",
+   "text": "Eine eingesperrte Figur: sie hat kein Feld mehr."
+  },
+  {
+   "theme": "hangingPiece",
+   "text": "Ein Stein stand ungedeckt da."
+  },
+  {
+   "theme": "defensiveMove",
+   "text": "Ein Verteidigungszug: er gewinnt nichts, er verhindert nur."
+  },
+  {
+   "theme": "quietMove",
+   "text": "Ein stiller Zug: kein Schach, kein Schlag — und trotzdem der stärkste."
+  },
+  {
+   "theme": "promotion",
+   "text": "Umwandlung: der Bauer geht durch."
+  },
+  {
+   "theme": "underPromotion",
+   "text": "Unterverwandlung: die Dame wäre hier der schwächere Zug."
+  },
+  {
+   "theme": "intermezzo",
+   "text": "Ein Zwischenzug: erst diese Forderung, dann das Schlagen."
+  },
+  {
+   "theme": "attackingF2F7",
+   "text": "Der schwächste Punkt in der Eröffnung ist f2 beziehungsweise f7."
+  }
+ ]
+}

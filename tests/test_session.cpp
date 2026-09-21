@@ -29,6 +29,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QTemporaryDir>
+#include <QVariantMap>
 
 #include <cstdio>
 
@@ -100,6 +101,54 @@ int main(int argc, char** argv)
     CHECK(teacher.mode() == TeacherEngine::Drill);
     CHECK(!teacher.prompt().isEmpty());
 
+    // --- die Lösung ansehen (teacher.md §6.5, §6.6 Hilfestufe 4) ----------
+    //
+    // Every answered task has to stay reachable. Until this existed, a drill
+    // task was gone the moment the next one loaded and one sentence of
+    // feedback was all the learner ever saw of it.
+    CHECK(teacher.reviewCount() == 0);
+
+    {
+        CHECK(teacher.mode() == TeacherEngine::Drill);
+        const QString openTask = teacher.task().value(QStringLiteral("cardId")).toString();
+        const int answeredBefore = teacher.reviewCount();
+
+        // Looking at the solution of a task that is still open ends it,
+        // unsolved: there is nothing left to produce once it has been seen.
+        teacher.showSolution();
+        CHECK(teacher.reviewCount() == answeredBefore + 1);
+        CHECK(teacher.reviewing());
+        QVariantMap view = teacher.solutionView();
+        CHECK(view.value(QStringLiteral("active")).toBool());
+        CHECK(view.value(QStringLiteral("atStart")).toBool());
+        CHECK(view.value(QStringLiteral("total")).toInt() >= 1);
+        // It starts on the position as it was asked, nothing played.
+        const QString asked = teacher.fen();
+
+        // Forward walks the line; the board moves with it.
+        const int total = view.value(QStringLiteral("total")).toInt();
+        for (int step = 0; step < total; ++step)
+            teacher.solutionForward();
+        view = teacher.solutionView();
+        CHECK(view.value(QStringLiteral("atEnd")).toBool());
+        CHECK(teacher.fen() != asked);
+
+        // And back again, to exactly where it started.
+        for (int step = 0; step < total; ++step)
+            teacher.solutionBack();
+        CHECK(teacher.fen() == asked);
+        CHECK(teacher.solutionView().value(QStringLiteral("atStart")).toBool());
+
+        // Leaving it returns to the task the session is on — not to the one
+        // that was just given up, and not to a freshly drawn one.
+        teacher.hideSolution();
+        CHECK(!teacher.reviewing());
+        CHECK(!teacher.solutionView().value(QStringLiteral("active")).toBool());
+        CHECK(teacher.task().value(QStringLiteral("cardId")).toString() != openTask);
+        CHECK(teacher.mode() == TeacherEngine::Drill);
+    }
+
+
     QStringList seen;
     int solved = 0;
     for (int step = 0; step < 10 && teacher.mode() == TeacherEngine::Drill; ++step) {
@@ -111,9 +160,21 @@ int main(int argc, char** argv)
         const QString fenBefore = teacher.fen();
         // The board is always seen from the side that has to move.
         CHECK(teacher.flipped() == !teacher.whiteToMove());
-        const QString solution = teacher.solutionForTest();
-        CHECK(!solution.isEmpty());
-        if (!playSolution(teacher, solution))
+        // The whole line, not just its first move: a task may be longer than
+        // one move now (teacher.md §6.5), and in that case the first move only
+        // gets it started.
+        const QStringList line = teacher.solutionLineForTest()
+                .split(QLatin1Char(' '));
+        CHECK(!line.isEmpty());
+        bool played = true;
+        for (int move = 0; move < line.size() && played; ++move) {
+            if (teacher.task().value(QStringLiteral("guided")).toBool()
+                    && (move % 2) == 1) {
+                continue;   // the app answers for the opponent in that one case
+            }
+            played = playSolution(teacher, line.at(move));
+        }
+        if (!played)
             break;
         ++solved;
         if (teacher.mode() != TeacherEngine::Drill)
@@ -121,8 +182,11 @@ int main(int argc, char** argv)
         CHECK(teacher.fen() != fenBefore);   // a new task, not the old board
     }
 
-    std::printf("test_session: %d Aufgaben gelöst, %d verschiedene\n", solved, seen.size());
+    std::printf("test_session: %d Aufgaben gelöst, %d verschiedene, %d in der Durchsicht\n",
+                solved, seen.size(), teacher.reviewCount());
     CHECK(solved >= 2);
+    // One given up plus the solved ones: every answered task is kept.
+    CHECK(teacher.reviewCount() == solved + 1);
 
     // A solved task has to leave a trace, or nothing is scheduled and the hint
     // the learner needed is forgotten with it.

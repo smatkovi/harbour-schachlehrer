@@ -10,8 +10,10 @@ X-Sailfish-ApplicationType=Silica
 [X-Sailjail]
 # chess-spec/platform.md §5.3. Internet is for the Lichess tablebase query and,
 # from M8 on, the Lichess Board API; Documents is only ever used for an import
-# or export the user starts by hand. Base.permission leaves disable-exec.inc
-# commented out, so the Stockfish child process may be started (§1.9).
-Permissions=Internet;Documents
+# or export the user starts by hand. Secrets is the encrypted store the Lichess
+# access token goes into (§3.3) — without it the app falls back to a file with
+# 0600 and says so. Base.permission leaves disable-exec.inc commented out, so
+# the Stockfish child process may be started (§1.9).
+Permissions=Internet;Documents;Secrets
 OrganizationName=org.smatkovi
 ApplicationName=harbour-schachlehrer

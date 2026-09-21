@@ -20,6 +20,18 @@ find_package(Qt5 REQUIRED COMPONENTS Core LinguistTools Network Qml Quick Sql)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SAILFISHAPP REQUIRED sailfishapp)
 
+# The Lichess access token belongs in the Sailfish Secrets store
+# (chess-spec/platform.md §3.3). Not REQUIRED: a host build for the tests has
+# no Secrets daemon and must not need one, and src/SecretsTokenStore.cpp
+# compiles to nothing without this define. The app then uses the documented
+# fallback, a file with 0600, and says so on the settings page.
+pkg_check_modules(SAILFISHSECRETS sailfishsecrets)
+if(SAILFISHSECRETS_FOUND)
+    message(STATUS "${PROJECT_NAME}: Sailfish Secrets found, the token goes there")
+else()
+    message(STATUS "${PROJECT_NAME}: no Sailfish Secrets, the token falls back to a 0600 file")
+endif()
+
 set(SCHACH_APP harbour-schachlehrer)
 set(SCHACH_DATADIR share/${SCHACH_APP})
 
@@ -62,6 +74,15 @@ add_executable(${SCHACH_APP}
     ${SCHACH_CORE_SOURCES}
     ${SCHACH_QT_SOURCES}
 )
+
+if(SAILFISHSECRETS_FOUND)
+    target_compile_definitions(${SCHACH_APP} PRIVATE SCHACH_HAVE_SAILFISH_SECRETS)
+    # The Secrets headers are included as <Secrets/...>, which lives under
+    # /usr/include/Sailfish; the .pc file does not add that level itself.
+    target_include_directories(${SCHACH_APP} PRIVATE
+        ${SAILFISHSECRETS_INCLUDE_DIRS} /usr/include/Sailfish)
+    target_link_libraries(${SCHACH_APP} ${SAILFISHSECRETS_LIBRARIES})
+endif()
 
 target_include_directories(${SCHACH_APP} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src

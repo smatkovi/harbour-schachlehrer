@@ -18,10 +18,11 @@ INC="-I$ROOT/src -isystem $ROOT/third_party/chess-library"
 
 CORE="$ROOT/src/core/Position.cpp $ROOT/src/core/Uci.cpp $ROOT/src/core/WinProb.cpp \
       $ROOT/src/core/Taxonomy.cpp $ROOT/src/core/Skill.cpp $ROOT/src/core/Placement.cpp \
-      $ROOT/src/core/Srs.cpp $ROOT/src/core/Card.cpp $ROOT/src/core/Routine.cpp"
+      $ROOT/src/core/Srs.cpp $ROOT/src/core/Card.cpp $ROOT/src/core/Routine.cpp \
+      $ROOT/src/core/SolutionLine.cpp"
 
-CORE_TESTS="perft uci taxonomy srs placement routine"
-QT_TESTS="fairplay lichess session"
+CORE_TESTS="perft uci taxonomy srs placement routine line"
+QT_TESTS="fairplay lichess session bank feed"
 
 for t in $CORE_TESTS; do
     printf 'building test_%s\n' "$t"
@@ -33,10 +34,11 @@ QT_INC="$(pkg-config --cflags Qt5Core Qt5Network Qt5Sql)"
 QT_LIBS="$(pkg-config --libs Qt5Core Qt5Network Qt5Sql)"
 QT_LAYER="$ROOT/src/EngineProcess.cpp $ROOT/src/Database.cpp $ROOT/src/Analyser.cpp \
           $ROOT/src/Sparring.cpp $ROOT/src/Lichess.cpp $ROOT/src/GameSync.cpp \
-          $ROOT/src/TeacherEngine.cpp $ROOT/src/ItemBank.cpp"
+          $ROOT/src/TeacherEngine.cpp $ROOT/src/ItemBank.cpp $ROOT/src/TokenStore.cpp \
+          $ROOT/src/SecretsTokenStore.cpp $ROOT/src/Themes.cpp $ROOT/src/PuzzleFeed.cpp"
 
 mkdir -p "$OUT/moc"
-for h in EngineProcess Database Analyser Sparring Lichess GameSync TeacherEngine; do
+for h in EngineProcess Database Analyser Sparring Lichess GameSync PuzzleFeed TeacherEngine; do
     "$MOC" -I"$ROOT/src" -I"$ROOT/third_party/chess-library" "$ROOT/src/$h.h" \
         -o "$OUT/moc/moc_$h.cpp"
 done

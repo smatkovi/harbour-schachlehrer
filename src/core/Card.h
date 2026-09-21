@@ -56,7 +56,12 @@ struct Card {
     // The first instance is the learner's own position; further repetitions
     // draw new ones.
     std::string seedFen;
-    std::string solutionUci;
+    std::string solutionUci;                  // the first move, always line[0]
+    // The whole answer (teacher.md §6.5), UCI, learner first and alternating.
+    // One entry for a one-move card; the task does not say which it is, that
+    // would be naming the kind of task (§6.2). The learner sees how many moves
+    // are left, not what sort of thing they are looking for.
+    std::vector<std::string> solutionLine;
     long long originGameId = -1;
 
     SrsState srs;
@@ -68,6 +73,11 @@ struct Card {
     std::vector<std::string> shownInstances;
 
     bool retired() const { return srs.state == CardState::Retired; }
+
+    // The two spellings kept in step: whichever was filled in fills the other.
+    // Old rows in the database have only `solutionUci`, and a card built from
+    // a finding has only that too — one move is a line of length one.
+    void normaliseSolution();
 };
 
 // The stable card id for an error class plus motif (§5.2 table).

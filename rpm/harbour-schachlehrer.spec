@@ -1,5 +1,5 @@
 Name:    harbour-schachlehrer
-Version: 0.1.1
+Version: 0.2.0
 Release: 1
 Summary: Chess coach for Sailfish OS: measure, play, diagnose, drill
 License: GPL-3.0-or-later
@@ -14,6 +14,11 @@ ExclusiveArch:  aarch64 %{arm}
 Requires:       sailfishsilica-qt5
 Requires:       qt5-plugin-sqldriver-sqlite
 BuildRequires:  pkgconfig(sailfishapp)
+# The Lichess token goes into the Sailfish Secrets store (platform.md §3.3).
+# The build works without it — the app then uses the 0600 file fallback — but
+# the package is meant to have it, so the dependency is declared rather than
+# left to chance.
+BuildRequires:  pkgconfig(sailfishsecrets)
 BuildRequires:  pkgconfig(Qt5Core)
 BuildRequires:  pkgconfig(Qt5Network)
 BuildRequires:  pkgconfig(Qt5Qml)
@@ -165,7 +170,7 @@ for f in LICENSE COPYING; do
     [ -f "$f" ] && install -m 644 "$f" %{buildroot}%{_datadir}/licenses/%{name}/
 done
 mkdir -p %{buildroot}%{_datadir}/doc/%{name}
-for f in CREDITS/ASSETS.md CREDITS/ENGINE.md CREDITS/TABLEBASES.md README.md docs/design.md; do
+for f in CREDITS/ASSETS.md CREDITS/CODE.md CREDITS/ENGINE.md CREDITS/TABLEBASES.md README.md docs/design.md; do
     [ -f "$f" ] && install -m 644 "$f" %{buildroot}%{_datadir}/doc/%{name}/
 done
 exit 0
@@ -203,6 +208,35 @@ exit 0
 %{_datadir}/licenses/%{name}
 
 %changelog
+* Fri Sep 18 2026 smatkovi - 0.2.0-1
+- Aufgaben gehen über einen Zug hinaus: die ganze Folge wird eingegeben,
+  die Gegnerzüge eingeschlossen. Nur die erste Begegnung mit einem Muster
+  zieht noch für den Gegner (teacher.md §6.5, §6.1).
+- Der Einstufungstest wiederholt sich nicht mehr: die Aufgaben werden im
+  Umkreis der Zielschwierigkeit gelost statt genommen, bereits gesehene
+  werden gemieden, und ein erneuter Test beginnt bei der letzten Messung
+  statt wieder bei 1000.
+- Wer eine Aufgabe nicht löst, bekommt keine schwerere mehr. Die Auswahl
+  greift jetzt nach unten und nicht nach oben, wenn nichts Passendes da ist,
+  und die Schätzung läuft nicht mehr aus dem Bereich, den die App abdeckt.
+- Die Schätzung rechnet mit der Schwierigkeit der Aufgabe, die tatsächlich
+  gestellt wurde, statt mit der, die gesucht war.
+- 3 944 mehrzügige Aufgaben aus der Lichess-Aufgabendatenbank (CC0) liegen
+  bei; sie bringen die Quote stiller Züge und Verteidigungszüge aus §6.3
+  erstmals auf die geforderten Anteile.
+- Auf Wunsch holt die App beim Start neue Aufgaben über die offene
+  Lichess-Schnittstelle nach und bewahrt sie für offline auf. Standardmäßig
+  aus; ohne Netz, Konto und Erlaubnis ändert sich nichts (§0.2).
+- Die Lösung lässt sich ansehen: Halbzug für Halbzug auf dem Brett, vor und
+  zurück, mit dem Satz dazu. Auch bei den Übungen, nicht nur im Test — jede
+  beantwortete Aufgabe bleibt erreichbar. Wer die Lösung einer noch offenen
+  Aufgabe ansieht, gibt sie damit auf; der Knopf sagt es vorher.
+- Ein zweiter Einstufungstest fängt mit einer leeren Durchsicht an statt die
+  Aufgaben des letzten mitzuzählen, und das Brett kommt aus der Durchsicht
+  richtig herum zurück.
+- Der Lichess-Zugangsschlüssel liegt im verschlüsselten Schlüsselspeicher
+  von Sailfish OS; ein vorhandener aus der Datei wird einmalig übernommen.
+  Antwortet der Speicher nicht, sagt die Einstellungsseite das.
 * Sun Sep 13 2026 smatkovi - 0.1.1-1
 - The engine evaluates again: both network options point at the small net,
   and an engine error after the handshake reaches the screen.

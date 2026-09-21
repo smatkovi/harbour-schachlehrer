@@ -122,6 +122,35 @@ Page {
                 width: parent.width
             }
 
+            // ---- Wie lang die Antwort noch ist -------------------------
+            // teacher.md §6.5. Nur bei Aufgaben über einen Zug hinaus, und es
+            // steht nie da, *was* für eine Aufgabe es ist (§6.2).
+            LinePanel {
+                width: parent.width
+                visible: !solution.active
+            }
+
+            // ---- Die Lösung, Halbzug für Halbzug -----------------------
+            SolutionPanel {
+                id: solution
+                width: parent.width
+            }
+
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: page.drill && !solution.active
+                text: qsTr("Lösung ansehen")
+                // §6.6 Hilfestufe 4. Sie kostet die Aufgabe, und das steht auf
+                // dem Knopf und nicht im Kleingedruckten: nach der Lösung gibt
+                // es nichts mehr zu finden, also wird sie als nicht gelöst
+                // gewertet und kommt bald wieder.
+                onClicked: solutionRemorse.execute(
+                               qsTr("Zeigen — die Aufgabe gilt dann als nicht gelöst"),
+                               function () { teacher.showSolution() })
+            }
+
+            RemorsePopup { id: solutionRemorse }
+
             // ---- Der Satz, unter dem Brett -----------------------------
             FeedbackPanel {
                 id: feedback

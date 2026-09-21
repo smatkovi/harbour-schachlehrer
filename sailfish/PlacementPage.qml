@@ -130,6 +130,21 @@ Page {
                 onMoveRejected: teacher.selectedSquare = -1
             }
 
+            // §6.5: on a task that is longer than one move the learner enters
+            // the whole line, the opponent's replies included, and this says
+            // how many are left — a count, never what sort of task it is.
+            LinePanel {
+                width: parent.width
+                visible: !solution.active
+            }
+
+            // Die Lösung, Halbzug für Halbzug. Im Test nur *nach* der Antwort
+            // erreichbar — §4.1 misst, was der Lernende ungestützt sieht.
+            SolutionPanel {
+                id: solution
+                width: parent.width
+            }
+
             FeedbackPanel {
                 width: parent.width
                 visible: page.started
@@ -170,7 +185,7 @@ Page {
                 Button {
                     visible: teacher.reviewing
                     text: qsTr("Weitermachen")
-                    onClicked: teacher.endReview()
+                    onClicked: teacher.hideSolution()
                 }
             }
 
@@ -181,7 +196,11 @@ Page {
                 wrapMode: Text.WordWrap
                 color: Style.secondaryColor
                 font.pixelSize: Style.fontSizeExtraSmall
-                text: qsTr("Aufgabe %1 von %2 · der markierte Zug ist die Lösung")
+                // It used to say "der markierte Zug ist die Lösung", and
+                // nothing was marked: the board was set from the FEN, so it
+                // had no last move to highlight. Now the line is stepped
+                // through, and the text says what is actually there.
+                text: qsTr("Aufgabe %1 von %2 · mit den Pfeilen durch die Lösung")
                       .arg(teacher.review && teacher.review.number ? teacher.review.number : 0)
                       .arg(teacher.reviewCount)
             }

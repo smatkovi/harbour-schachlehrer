@@ -32,7 +32,11 @@
 namespace schach {
 
 namespace {
-const int kSchemaVersion = 1;
+// 2: placement_seen, so that a second placement test does not reopen with the
+// same positions as the first (teacher.md §5.2 — a remembered position
+// measures memory, not skill). CREATE TABLE IF NOT EXISTS carries an existing
+// database over without a migration step.
+const int kSchemaVersion = 2;
 
 QString joinInstances(const std::vector<std::string>& list)
 {
@@ -40,6 +44,31 @@ QString joinInstances(const std::vector<std::string>& list)
     for (std::size_t i = 0; i < list.size(); ++i)
         out << QString::fromStdString(list[i]);
     return out.join(QLatin1String("\n"));
+}
+
+// The solution of a card is a line now (teacher.md §6.5), and it is kept in
+// the column that used to hold one move: space-separated UCI. A row written
+// before this change holds exactly one move, which reads back as a line of
+// length one — so there is no migration, and none can go wrong.
+QString joinLine(const std::vector<std::string>& line)
+{
+    QStringList out;
+    for (std::size_t i = 0; i < line.size(); ++i)
+        out << QString::fromStdString(line[i]);
+    return out.join(QLatin1Char(' '));
+}
+
+std::vector<std::string> splitLine(const QString& text)
+{
+    // Split by hand: the enum that says "skip the empty parts" moved from
+    // QString to Qt in 5.14, and this app is built against 5.6.
+    std::vector<std::string> out;
+    const QStringList parts = text.split(QLatin1Char(' '));
+    for (int i = 0; i < parts.size(); ++i) {
+        if (!parts.at(i).isEmpty())
+            out.push_back(parts.at(i).toStdString());
+    }
+    return out;
 }
 
 std::vector<std::string> splitInstances(const QString& text)
@@ -162,6 +191,13 @@ bool Database::createSchema()
         " id INTEGER PRIMARY KEY, measured_at INTEGER, theta REAL,"
         " tak REAL, srg REAL, rec REAL, endd REAL, stl REAL, erd REAL,"
         " blunder_rate REAL)",
+
+        // Which placement items this learner has already been shown, across
+        // all tests. Not part of `reviews`: a placement item is not a card and
+        // has no schedule — this table answers one question only, "seen or
+        // not", and it has to survive the app being reinstalled over its data.
+        "CREATE TABLE IF NOT EXISTS placement_seen ("
+        " item_id TEXT PRIMARY KEY, seen_at INTEGER, correct INTEGER)",
 
         "CREATE INDEX IF NOT EXISTS ix_cards_due ON cards(due_day)",
         "CREATE INDEX IF NOT EXISTS ix_plies_epd ON plies(epd)",
@@ -439,7 +475,9 @@ bool Database::upsertCard(const core::Card& card)
     query.addBindValue(QString::fromLatin1(core::motifKey(card.motif)));
     query.addBindValue(static_cast<int>(card.origin));
     query.addBindValue(QString::fromStdString(card.seedFen));
-    query.addBindValue(QString::fromStdString(card.solutionUci));
+    query.addBindValue(card.solutionLine.empty()
+                       ? QString::fromStdString(card.solutionUci)
+                       : joinLine(card.solutionLine));
     query.addBindValue(static_cast<qint64>(card.originGameId));
     query.addBindValue(static_cast<int>(card.srs.state));
     query.addBindValue(card.srs.stability);
@@ -475,7 +513,8 @@ core::Card cardFromRow(const QSqlQuery& query)
     card.motif = core::motifFromKey(query.value(5).toString().toStdString());
     card.origin = static_cast<core::CardOrigin>(query.value(6).toInt());
     card.seedFen = query.value(7).toString().toStdString();
-    card.solutionUci = query.value(8).toString().toStdString();
+    card.solutionLine = splitLine(query.value(8).toString());
+    card.normaliseSolution();
     card.originGameId = query.value(9).toLongLong();
     card.srs.state = static_cast<core::CardState>(query.value(10).toInt());
     card.srs.stability = query.value(11).toDouble();
@@ -619,6 +658,39 @@ bool Database::latestSkill(double& theta, QVector<double>& thetaPerDimension) co
     for (int i = 0; i < core::kDimensionCount; ++i)
         thetaPerDimension.append(query.value(1 + i).toDouble());
     return true;
+}
+
+// --- placement items already seen --------------------------------------------
+
+bool Database::rememberPlacementItem(const QString& itemId, qint64 at, bool correct)
+{
+    if (itemId.isEmpty())
+        return false;
+    QSqlQuery query(m_db);
+    // REPLACE and not IGNORE: seeing an item again should move its date, so
+    // that a later "oldest first" rule has something to work with.
+    query.prepare(QStringLiteral(
+            "INSERT OR REPLACE INTO placement_seen (item_id, seen_at, correct)"
+            " VALUES (?, ?, ?)"));
+    query.addBindValue(itemId);
+    query.addBindValue(at);
+    query.addBindValue(correct ? 1 : 0);
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+QStringList Database::placementItemsSeen() const
+{
+    QStringList out;
+    QSqlQuery query(m_db);
+    if (!query.exec(QStringLiteral("SELECT item_id FROM placement_seen")))
+        return out;
+    while (query.next())
+        out << query.value(0).toString();
+    return out;
 }
 
 qint64 Database::lastMeasuredAt() const

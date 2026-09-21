@@ -19,6 +19,11 @@ FeedbackPanel 1.0 FeedbackPanel.qml
 RoutinePanel 1.0 RoutinePanel.qml
 BlunderCheckOverlay 1.0 BlunderCheckOverlay.qml
 EngineBanner 1.0 EngineBanner.qml
+# How many moves of the answer are still to come (teacher.md §6.5) — a count,
+# never a description of the task.
+LinePanel 1.0 LinePanel.qml
+# Die Lösung Halbzug für Halbzug auf dem Brett (teacher.md §6.5).
+SolutionPanel 1.0 SolutionPanel.qml
 ThinkingIndicator 1.0 ThinkingIndicator.qml
 SkillRow 1.0 SkillRow.qml
 

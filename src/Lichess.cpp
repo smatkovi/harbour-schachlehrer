@@ -403,6 +403,27 @@ Lichess::~Lichess()
 void Lichess::setDataDirectory(const QString& path)
 {
     m_dataDirectory = path;
+    // Opening the store here and not in the constructor: the directory is the
+    // one thing it needs, and a test that sets its own store afterwards must
+    // win. makeTokenStore() also carries an older installation's token file
+    // into Secrets, so this is the one place that migration can happen.
+    if (!m_store)
+        m_store.reset(makeTokenStore(m_dataDirectory));
+}
+
+void Lichess::setTokenStore(TokenStore* store)
+{
+    m_store.reset(store);
+}
+
+QString Lichess::tokenStoreDescription() const
+{
+    return m_store ? m_store->describe() : QString();
+}
+
+bool Lichess::tokenStoreEncrypted() const
+{
+    return m_store && m_store->encrypted();
 }
 
 QString Lichess::tokenPath() const
@@ -453,15 +474,9 @@ void Lichess::setMessage(const QString& sentence)
 
 bool Lichess::loadToken()
 {
-    const QString path = tokenPath();
-    if (path.isEmpty())
+    if (!m_store)
         return false;
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly))
-        return false;
-    // §3.3: "Make sure your application can handle at least 512 characters."
-    const QString token = QString::fromLatin1(file.read(4096)).trimmed();
-    file.close();
+    const QString token = m_store->load();
     if (token.isEmpty())
         return false;
     m_token = token;
@@ -475,28 +490,21 @@ bool Lichess::loadToken()
 void Lichess::saveToken(const QString& token)
 {
     m_token = token;
-    const QString path = tokenPath();
-    if (path.isEmpty())
+    if (m_store && m_store->save(token))
         return;
-    QDir().mkpath(QFileInfo(path).absolutePath());
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        setMessage(tr("Der Zugangsschlüssel lässt sich nicht speichern. "
-                      "Die Anmeldung gilt nur für diesen Start der App."));
-        return;
-    }
-    // §3.3: a file with 0600 under AppDataLocation, never QSettings. The
-    // permissions are set before anything is written, so the secret is never
-    // readable by anyone else, not even for a moment.
-    file.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
-    file.write(token.toLatin1());
-    file.close();
-    file.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
+    // The login itself worked; only keeping it did not. Saying so is the
+    // honest answer — the session is real until the app ends.
+    setMessage(tr("Der Zugangsschlüssel lässt sich nicht speichern. "
+                  "Die Anmeldung gilt nur für diesen Start der App."));
 }
 
 void Lichess::clearToken()
 {
     m_token.clear();
+    if (m_store)
+        m_store->clear();
+    // An installation that used the file before this code may still have one
+    // lying about if the migration never ran. Logging out must leave nothing.
     const QString path = tokenPath();
     if (!path.isEmpty())
         QFile::remove(path);
@@ -771,8 +779,24 @@ void Lichess::onRequestFinished()
     pump();
 }
 
+void Lichess::fetchJson(const QString& path, const QString& tag)
+{
+    PendingRequest request;
+    request.path = path;
+    request.post = false;
+    request.what = QStringLiteral("json:") + tag;
+    enqueue(request);
+}
+
 void Lichess::routeReply(const PendingRequest& request, int status, const QByteArray& body)
 {
+    // Handed straight back out: this client knows about sessions, games and
+    // challenges, and nothing about what else the caller asked for.
+    if (request.what.startsWith(QLatin1String("json:"))) {
+        emit jsonArrived(request.what.mid(5), status, body);
+        return;
+    }
+
     const QJsonObject object = QJsonDocument::fromJson(body).object();
     const bool ok = status >= 200 && status < 300;
     const QString serverError = object.value(QStringLiteral("error")).toString();

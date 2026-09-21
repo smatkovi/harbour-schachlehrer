@@ -43,17 +43,25 @@ harbour-schachlehrer/
 │   ├─ Placement.h/.cpp der adaptive Einstufungstest (§4), Elo/Rasch
 │   ├─ Srs.h/.cpp       FSRS-Planung, Kartenlebenslauf (§5)
 │   ├─ Routine.h/.cpp   „Was frage ich mich?" — die Denkroutine (§6.6, §7.5)
+│   ├─ SolutionLine.*   die mehrzügige Antwort (§6.5): ganze Folge eingeben, dann abspielen
 │   └─ Card.h/.cpp      eine Übungskarte: Stellung, Muster, Herkunft, Termin
 ├─ src/                 Qt-Schicht
 │   ├─ EngineProcess.*  QProcess + UCI, ein Prozess, serielle Anfragen, Zeitbudget
 │   ├─ Database.*       SQLite: Partien, Fehler, Karten, Messwerte
 │   ├─ Analyser.*       Partie → Fehlerliste → Karten (die Diagnosestufe)
 │   ├─ Sparring.*       der Gegner mit Fehlerbudget statt Elo-Deckel
+│   ├─ Themes.*         was ein Lichess-Aufgabenthema bedeutet (assets/items/themes.json)
+│   ├─ PuzzleFeed.*     neue Aufgaben von Lichess, für offline aufbewahrt (§5.2)
+│   ├─ TokenStore.*     wo der Lichess-Schlüssel liegt (platform.md §3.3)
+│   ├─ SecretsTokenStore.*  der verschlüsselte Speicher von Sailfish OS; Datei als Rückfall
 │   └─ TeacherEngine.*  die einzige QML-Fassade
 ├─ sailfish/            Silica-UI, Style-Singleton wie in harbour-tarock
 ├─ third_party/         Stockfish-Quellen + der Small-Net-Patch, cburnett-SVG (BSD-3)
 ├─ assets/syzygy/       3+4 Steine, WDL und DTZ, 70 Dateien, 4,2 MB
-├─ tests/               perft, UCI-Parser, Taxonomie, FSRS, Einstufung, Routine
+├─ tests/               perft, UCI-Parser, Taxonomie, FSRS, Einstufung, Routine,
+│                      Zugfolgen (test_line), Aufgabenauswahl (test_bank),
+│                      Aufgabennachschub (test_feed), Lösungsansicht (in
+│                      test_session und test_bank)
 └─ rpm/harbour-schachlehrer.spec
 ```
 

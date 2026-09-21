@@ -86,6 +86,26 @@ A board corner in two wood tones with a knight on it. The knight is the glyph
 U+265E of DejaVu Sans (Bitstream Vera / public-domain-equivalent licence),
 rasterised at build time — no font file ships with the package.
 
+## Placement and drill items — Lichess puzzle database
+
+| | |
+|---|---|
+| File | `assets/items/puzzles.json` — 3 944 items |
+| Source | Lichess database exports |
+| URL | `https://database.lichess.org/lichess_db_puzzle.csv.zst` |
+| Author | Lichess and its solvers; the ratings are Glicko-2 values earned by millions of solve attempts |
+| Retrieved | 2026-09-17 (file dated 2026-09-09, 6 100 952 puzzles) |
+| Licence | **CC0 1.0**, verbatim: "Database exports are released under the Creative Commons CC0 license. Use them for research, commercial purpose, publication, anything you like." |
+| Changes | filtered, stratified and reshaped by `tools/import_lichess_puzzles.py`; see `assets/items/README.md` |
+
+CC0 requires no attribution. It is given anyway, because the calibration is the
+valuable part and it was not ours to make: chess-spec/teacher.md §4.2 builds the
+whole measurement on it.
+
+The hand-written `assets/items/placement.json` draws on the same database for
+some of its positions; its ids carry five characters of the Lichess puzzle id,
+so each can be looked up at `https://lichess.org/training/<id>`.
+
 ## Syzygy endgame tablebases
 
 | | |

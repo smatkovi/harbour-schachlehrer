@@ -37,6 +37,8 @@
 #include "EngineProcess.h"
 #include "GameSync.h"
 #include "Lichess.h"
+#include "PuzzleFeed.h"
+#include "core/SolutionLine.h"
 #include "Sparring.h"
 #include "core/Card.h"
 #include "core/Placement.h"
@@ -111,6 +113,22 @@ class TeacherEngine : public QObject
     Q_PROPERTY(QString lichessAccount READ lichessAccount NOTIFY lichessChanged)
     Q_PROPERTY(QString lichessMessage READ lichessMessage NOTIFY lichessChanged)
     Q_PROPERTY(QString lichessAuthUrl READ lichessAuthUrl NOTIFY lichessChanged)
+    // Where the access key is kept, and whether that place is encrypted. The
+    // settings page shows both: an app that keeps a key in the weaker of two
+    // places must not let the user believe it is in the stronger one.
+    // --- Nachschub an Aufgaben (teacher.md §5.2) ----------------------------
+    // How many exercises were fetched from Lichess, how many are wanted, and
+    // whether the learner has allowed it at all. Off until they say so: the
+    // app is complete on what it ships (§0.2).
+    Q_PROPERTY(bool feedAllowed READ feedAllowed WRITE setFeedAllowed NOTIFY feedChanged)
+    Q_PROPERTY(int feedCount READ feedCount NOTIFY feedChanged)
+    Q_PROPERTY(int feedTarget READ feedTarget WRITE setFeedTarget NOTIFY feedChanged)
+    Q_PROPERTY(bool feedBusy READ feedBusy NOTIFY feedChanged)
+    Q_PROPERTY(QString feedMessage READ feedMessage NOTIFY feedChanged)
+    Q_PROPERTY(int itemCount READ itemCount NOTIFY feedChanged)
+
+    Q_PROPERTY(QString lichessKeyStore READ lichessKeyStore NOTIFY lichessChanged)
+    Q_PROPERTY(bool lichessKeyEncrypted READ lichessKeyEncrypted NOTIFY lichessChanged)
     Q_PROPERTY(bool lichessConnected READ lichessConnected NOTIFY lichessChanged)
     Q_PROPERTY(bool lichessSeeking READ lichessSeeking NOTIFY lichessChanged)
     Q_PROPERTY(QVariantList lichessChallenges READ lichessChallenges NOTIFY lichessChanged)
@@ -137,6 +155,10 @@ class TeacherEngine : public QObject
     Q_PROPERTY(int reviewIndex READ reviewIndex NOTIFY reviewChanged)
     Q_PROPERTY(int reviewCount READ reviewCount NOTIFY reviewChanged)
     Q_PROPERTY(QVariantMap review READ review NOTIFY reviewChanged)
+    // Stepping through the solution on the board (teacher.md §6.5: the app
+    // plays the line back; §6.6 hint level 4: the full solution with a
+    // sentence). Empty `active` means nothing is being shown.
+    Q_PROPERTY(QVariantMap solutionView READ solutionView NOTIFY reviewChanged)
 
 public:
     enum Mode { Idle = 0, Placement = 1, Drill = 2, Sparring = 3, Review = 4, Online = 5 };
@@ -156,6 +178,13 @@ public:
     // The placement items (teacher.md §4.2); without them the test says so
     // instead of asking about the starting position.
     void setItemBankPath(const QString& path);
+    // A second bank on top of the first (ItemBank::merge). The hand-written
+    // items and the ones imported from Lichess (tools/import_lichess_puzzles.py)
+    // are two files, and a missing second one is a normal state.
+    void addItemBankPath(const QString& path);
+    // assets/items/themes.json, which PuzzleFeed needs to give a fetched
+    // puzzle a dimension. Sets the feed going if the learner has allowed it.
+    void setThemesPath(const QString& path);
 
     QString fen() const;
     QVariantList squares() const;
@@ -165,6 +194,7 @@ public:
     int reviewIndex() const { return m_reviewIndex; }
     int reviewCount() const { return m_answered.size(); }
     QVariantMap review() const;
+    QVariantMap solutionView() const;
     void setSelectedSquare(int square);
     bool flipped() const { return m_flipped; }
     void setFlipped(bool flipped);
@@ -199,6 +229,17 @@ public:
     QString lichessAccount() const;
     QString lichessMessage() const;
     QString lichessAuthUrl() const;
+    QString lichessKeyStore() const;
+    bool lichessKeyEncrypted() const;
+
+    bool feedAllowed() const;
+    void setFeedAllowed(bool allowed);
+    int feedCount() const;
+    int feedTarget() const;
+    void setFeedTarget(int items);
+    bool feedBusy() const;
+    QString feedMessage() const;
+    int itemCount() const { return m_items.count(); }
     bool lichessConnected() const;
     bool lichessSeeking() const;
     QVariantList lichessChallenges() const;
@@ -220,6 +261,10 @@ public:
     EngineProcess* engine() const { return m_engine; }
 
     Q_INVOKABLE void startPlacement();
+    // Take the last entered move of a line back (teacher.md §7.6: taking back
+    // is free). Composing a line is not answering; a slip of the finger must
+    // not count as a wrong answer.
+    Q_INVOKABLE bool undoEntry();
     Q_INVOKABLE void startSession();
     Q_INVOKABLE void startSparring(int handicap);
     Q_INVOKABLE bool play(int fromSquare, int toSquare, const QString& promotion = QString());
@@ -250,6 +295,10 @@ public:
     Q_INVOKABLE void lichessAbort();
     Q_INVOKABLE void lichessClaimVictory();
     Q_INVOKABLE void lichessSyncGames();
+    // Fetch now, rather than waiting for the next start.
+    Q_INVOKABLE void fetchPuzzles();
+    // Throw away everything that was fetched; the shipped bank stays.
+    Q_INVOKABLE void clearFetchedPuzzles();
     // The game the sync brought in last, analysed **after** it ended — which
     // is the allowed and the whole point (platform.md §3.7, GameSync.h).
     Q_INVOKABLE void analyseSyncedGame();
@@ -270,6 +319,16 @@ public:
     Q_INVOKABLE void reviewNext();
     Q_INVOKABLE void reviewItem(int index);
     Q_INVOKABLE void endReview();
+
+    // --- die Lösung ansehen ---------------------------------------------
+    // Looking at the solution of a task that is still open **ends it, unsolved**
+    // — there is nothing left to produce once it has been seen, and §4.1 will
+    // not have the measurement made on an item the learner was shown. The
+    // button says so before it does it.
+    Q_INVOKABLE void showSolution();
+    Q_INVOKABLE void solutionForward();
+    Q_INVOKABLE void solutionBack();
+    Q_INVOKABLE void hideSolution();
     // Leave the online state no matter what the client thinks: clears the live
     // game, unlocks the engine and goes back to Idle. The way out of a half
     // finished conversation with the server, and reachable from the UI.
@@ -277,6 +336,12 @@ public:
 
     // Test hook: the move the current task is graded against.
     QString solutionForTest() const { return m_solutionUci; }
+    // The whole line of the running task, UCI, space-separated. The tests play
+    // through multi-move items with it; nothing in the app reads it.
+    QString solutionLineForTest() const;
+    // The item bank draws at random now (ItemBank::pick), which is the point —
+    // but a test that cannot repeat a draw cannot check anything.
+    void seedItemBankForTest(unsigned int seed) { m_items.setSeed(seed); }
 
 signals:
     void positionChanged();
@@ -292,6 +357,7 @@ signals:
     void blunderCheckChanged();
     void drillModeChanged();
     void lichessChanged();
+    void feedChanged();
     void onlineGameChanged();
     void clocksChanged();
 
@@ -355,12 +421,19 @@ private:
 
     core::Placement* m_placement;
     ItemBank m_items;
+    // New exercises from Lichess, kept for offline use, and merged into the
+    // bank above. Optional and additive, never a requirement (§0.2). Built in
+    // setPaths(), because it needs the data directory.
+    PuzzleFeed* m_feed;
+    QString m_feedDirectory;
 
     // One answered placement item, kept so the solution can be looked at.
     struct AnsweredItem {
         QString itemId;
+        QString cardId;       // set for a drill task, empty for a placement item
         QString fen;          // the position as it was asked
-        QString solution;     // UCI
+        QString solution;     // UCI, the first move of the line
+        QString solutionLine; // the whole line, UCI, space-separated
         QString solutionSan;
         QString played;       // what the learner did, empty when skipped
         QString playedSan;
@@ -380,12 +453,32 @@ private:
     QString m_liveSolution;
     QString m_livePrompt;
     QVariantMap m_liveTask;
+    // The orientation too: the review item may be the other colour's move, and
+    // coming back to a board that is upside down puts the learner's pieces at
+    // the wrong end.
+    bool m_liveFlipped = false;
     bool m_liveSaved;
 
     void rememberAnswer(bool correct);
     void showAnswered(int index);
+    // Put `index` on the board at ply `step` of its line and tell the UI.
+    void playbackTo(int step);
+
+    // What is being stepped through. -1 in `m_showStep` means nothing is.
+    QStringList m_showLine;
+    int m_showStep = -1;
     QVector<core::Card> starterCards(core::Dimension dimension) const;
+    // The answer being composed (teacher.md §6.5). A one-move task is a line
+    // of length one, so there is only one code path for both.
+    core::SolutionLine m_line;
+    // The board the learner sees is replayed from the line after every entry,
+    // and the task map carries how many moves are still to come.
+    void syncBoardToLine();
+    void updateLineProgress();
+    static QString lineSan(const QString& fen, const QStringList& line);
+
     QStringList m_usedItems;   // one position is never asked twice in a run
+    QStringList m_seenItems;   // and, if it can be helped, never twice at all
     core::SkillState m_skill;
     core::SessionPlan m_sessionPlan;
     QVector<core::Card> m_sessionCards;

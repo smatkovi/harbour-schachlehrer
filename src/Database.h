@@ -39,6 +39,7 @@
 #include <QObject>
 #include <QSqlDatabase>
 #include <QString>
+#include <QStringList>
 #include <QVector>
 
 namespace schach {
@@ -136,6 +137,14 @@ public:
     int newCardsCreatedOn(qint64 day) const;
     bool recordReview(const QString& cardId, qint64 at, core::Rating rating, int milliseconds,
                       bool correct, bool usedHint);
+
+    // --- placement items already seen ---------------------------------------
+    // teacher.md §5.2: a position that comes back does not measure whether the
+    // learner knows the pattern, only whether they remember the position. The
+    // placement test therefore avoids what it has shown before, across tests,
+    // and only falls back to it when the bank has nothing else left.
+    bool rememberPlacementItem(const QString& itemId, qint64 at, bool correct);
+    QStringList placementItemsSeen() const;
 
     // --- skills -------------------------------------------------------------
     bool recordSkill(qint64 at, double theta, const QVector<double>& thetaPerDimension,

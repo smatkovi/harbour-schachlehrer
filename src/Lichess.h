@@ -45,17 +45,21 @@
 //     tears the connection down and reconnects with exponential backoff. No
 //     reconnect loop without backoff (§3.4: `eventStream = 30/10 minutes`).
 //
-// The token is written to a file with 0600 under the app's own data directory,
-// never into QSettings (§3.3), and logging out deletes it and revokes it.
+// The token goes into the Sailfish Secrets store, with a file with 0600 under
+// the app's own data directory as the documented fallback, never into
+// QSettings (§3.3); logging out deletes it and revokes it. See TokenStore.h.
 //
 // What this class deliberately does not do: decide anything about the board.
 // It parses, it sends, it emits. TeacherEngine owns the position, and
 // TeacherEngine is what holds `m_liveGameId` and kills the engine (§3.7).
 
+#include "TokenStore.h"
+
 #include <QByteArray>
 #include <QJsonObject>
 #include <QObject>
 #include <QQueue>
+#include <QScopedPointer>
 #include <QString>
 #include <QStringList>
 #include <QVector>
@@ -198,10 +202,19 @@ public:
     explicit Lichess(QObject* parent = 0);
     ~Lichess();
 
-    // Where the token file goes. Under Sailjail this is
+    // Where the fallback token file goes. Under Sailjail this is
     // ~/.local/share/org.smatkovi/harbour-schachlehrer (platform.md §5.3).
+    // Setting it opens the token store, so it has to happen before loadToken().
     void setDataDirectory(const QString& path);
     QString tokenPath() const;
+
+    // The tests hand in their own store; Lichess takes ownership. Nothing in
+    // a test may reach the user's real key store.
+    void setTokenStore(TokenStore* store);
+    // One German sentence fragment for the settings page: where the key is,
+    // and whether that place is encrypted.
+    QString tokenStoreDescription() const;
+    bool tokenStoreEncrypted() const;
 
     // https://lichess.org by default. Configurable so that the tests can point
     // the client at an address that answers instantly and never leaves the
@@ -228,12 +241,12 @@ public:
     const LichessGame& game() const { return m_game; }
     QVector<LichessChallenge> challenges() const { return m_challenges; }
 
-    // Reads the token from disk. Returns true when there was one; the account
+    // Reads the token from the store. Returns true when there was one; the account
     // name is then fetched in the background and the event stream opened.
     bool loadToken();
     void logIn();
-    // Revokes the token on the server (DELETE /api/token), deletes the file
-    // and closes every stream. Visible in the UI as "Abmelden".
+    // Revokes the token on the server (DELETE /api/token), deletes it from
+    // the store and closes every stream. Visible in the UI as "Abmelden".
     void logOut();
     // Abandon a login that is under way: shuts the local listener, forgets the
     // verifier and goes back to a state the user can act in. Without this a
@@ -242,6 +255,13 @@ public:
 
     void refreshAccount();
     void refreshChallenges();
+
+    // A plain GET whose answer is handed back through `jsonArrived` instead of
+    // being interpreted here. It exists so that PuzzleFeed can use this
+    // client's request queue — one request at a time and the 60 s backoff
+    // after a 429 (§3.4) — without putting puzzle knowledge into this class.
+    // Works logged out: the puzzle endpoints need no token.
+    void fetchJson(const QString& path, const QString& tag);
 
     // §3.2: only rapid, classical and correspondence can be reached through
     // the seek. Blitz would need a direct challenge — and is the wrong format
@@ -290,6 +310,9 @@ signals:
     void gameFinished(const QString& gameId, const QString& status, const QString& winner);
     void accountChanged();
     void failed(const QString& sentence);
+    // The answer to fetchJson(): the tag it was asked with, the HTTP status,
+    // and the body exactly as it arrived.
+    void jsonArrived(const QString& tag, int status, const QByteArray& body);
 
 private slots:
     void onRedirectConnection();
@@ -357,6 +380,7 @@ private:
 
     QString m_endpoint;
     QString m_dataDirectory;
+    QScopedPointer<TokenStore> m_store;
     QString m_token;
     QString m_account;
     QString m_accountId;

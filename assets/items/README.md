@@ -1,9 +1,43 @@
 # The placement-test item bank
 
-`placement.json` is the item bank that `src/ItemBank.cpp` loads for the adaptive
-placement test (teacher.md §4). Without it the test refuses to ask anything —
-that is deliberate: an empty bank is a stated condition, never a silent fallback
-to the starting position.
+Two files, with two different jobs.
+
+`placement.json` is the hand-written bank that `src/ItemBank.cpp` loads for the
+adaptive placement test (teacher.md §4). Without it the test refuses to ask
+anything — that is deliberate: an empty bank is a stated condition, never a
+silent fallback to the starting position.
+
+`puzzles.json` is merged on top of it (`ItemBank::merge`) and is *generated*, by
+`tools/import_lichess_puzzles.py`, out of the Lichess puzzle database (CC0). It
+is what gives the test its spread and its multi-move tasks; see "The imported
+bank" at the end of this file. It may be absent, and the app then runs on the
+hand-written items alone.
+
+`themes.json` is not a bank. It is the table that says what a Lichess puzzle
+theme means for this app — which dimension it measures (teacher.md §3.1), which
+of §6.3's three sorts it is, and what sentence names the motif after solving
+(§6.2). It lives here because **two** programs need the same answers:
+`tools/import_lichess_puzzles.py`, which builds `puzzles.json` on a build host,
+and `src/PuzzleFeed.cpp`, which turns the puzzles the Lichess API hands the
+phone at run time into the same items. Two copies of these tables would drift
+apart and the two halves of one bank would then measure different things.
+
+A third file, `fetched.json`, appears at run time in the app's own data
+directory (never here). That is what `PuzzleFeed` collected from
+`GET /api/puzzle/batch/mix`, fifty at a time, no account needed, and only after
+the learner switched it on. It is merged like the other two. The 304 MB database
+export is **never** downloaded to the phone.
+
+**What the fetched half does and does not carry.** It brings spread and
+freshness: the five difficulty levels are asked in turn, which covers roughly
+650 to 2 100 (measured), and every position is one the learner has not seen,
+which is what teacher.md §5.2 is about. It does **not** bring the mixture of
+§6.3 — the batch endpoint serves only the `mix` angle, a theme angle answers
+with a web page, and the natural mixture is 2 % quiet and 4 % defensive
+(measured over 250). The shipped bank carries that quota; the fetched half
+dilutes its share as the pool grows. That is tolerable only because §6.3 sets
+the quota for what a *session* serves, not for what the bank holds — see the
+class comment in `src/PuzzleFeed.h`.
 
 Everything here is data. Nothing in it was taken on trust: every single item was
 put to a real Stockfish before it was written to the file, and
@@ -29,10 +63,11 @@ A JSON array (an object with an `"items"` array is also accepted). One item:
 |---|---|
 | `id` | unique, `<dimension>-<difficulty>-<source>`. Where the source part is five characters of Lichess' own puzzle id, the position can be looked up at `https://lichess.org/training/<id>`; otherwise it is a short name for a composed position. |
 | `fen` | the position **as the learner sees it**. It is already that side's turn — no first move has to be applied. |
-| `solution` | the one move that counts, in UCI (`e2e4`, `e7e8q`). |
+| `solution` | the learner's **first** move, in UCI (`e2e4`, `e7e8q`). Always the same as `line[0]`. |
+| `line` | the whole answer (teacher.md §6.5), UCI, learner first and alternating: learner, opponent, learner, … It always ends on a learner move. A one-move item may leave it out; `ItemBank` then derives it from `solution`. The learner enters every move of it, the opponent's replies included — only the introductory instance of a new pattern has them played automatically (§6.1(3)). |
 | `alsoAccepted` | UCI moves the engine rated as good as the solution, so the learner is not punished for them. Usually empty. |
 | `dimension` | one of `TAK`, `SRG`, `REC`, `END`, `STL`, `ERD` — exactly the keys `core::dimensionFromKey()` accepts (`src/core/Skill.h`). |
-| `difficulty` | Elo-scale difficulty, 700…2050. For Lichess-derived items this is their Glicko-2 puzzle rating, taken over unchanged as teacher.md §4.2 prescribes; for composed items it is a set start value, and §4.4 keeps the uncertainty of such items artificially high. |
+| `difficulty` | Elo-scale difficulty, 600…2200. For Lichess-derived items this is their Glicko-2 puzzle rating, taken over unchanged as teacher.md §4.2 prescribes; for composed items it is a set start value, and §4.4 keeps the uncertainty of such items artificially high. |
 | `explanation` | one German sentence, second person, shown **after** the learner has answered. It says *why* the move is right, not what it wins. Never shown before — teacher.md §6.2 forbids announcing the theme. |
 
 The item never names its theme, motif or dimension to the learner. That is the
@@ -197,3 +232,66 @@ Rules of thumb that save a round trip:
   broken one. The script will say so.
 * If you add a tactical item, add a quiet one too. The 25 % share in §6.3 is a
   floor, not a target, and it is the easiest thing in this bank to erode.
+
+## The imported bank
+
+`puzzles.json` is **generated**, not written. `tools/import_lichess_puzzles.py`
+builds it from the Lichess puzzle database, and teacher.md §4.2 explains why
+that is the right source in one sentence: *we do not have to calibrate
+anything.* `Rating` is a Glicko-2 value produced by treating every solve attempt
+as a rated game between solver and puzzle — millions of them — and that is
+exactly the item difficulty §4.4 wants.
+
+    tools/import_lichess_puzzles.py --input lichess_db_puzzle.csv.zst \
+                                    --output assets/items/puzzles.json \
+                                    --exclude assets/items/placement.json
+
+Licence: **CC0**, verbatim from the database page — "Use them for research,
+commercial purpose, publication, anything you like." No attribution is required;
+`CREDITS/ASSETS.md` names the source anyway.
+
+The filter is §4.2's: `Popularity >= 80`, `NbPlays >= 500`, `RatingDeviation <= 80`,
+rating 600…2200. Out of 6 100 952 puzzles, 1 824 417 pass it, and 3944 are drawn
+from them — stratified over rating bands and over the six dimensions, by
+reservoir sampling with a fixed seed, so two builds of the same database agree.
+
+**The one semantic detail that ruins everything if it is missed** — quoted in
+§4.2 from the database's own documentation: *"FEN is the position before the
+opponent makes their move. The position to present to the player is after
+applying the first move to that FEN."* So `Moves[0]` is the opponent's move
+**into** the puzzle and the learner's line is `Moves[1:]`. Getting it wrong
+shows every position one move too early, and it looks almost right.
+
+What came out:
+
+| | |
+|---|---|
+| items | 3944 |
+| longer than one move | 3647 (92 %) |
+| line length in plies | 1: 297, 3: 2400, 5: 1041, 7: 206 |
+| per dimension | END 754, ERD 660, REC 672, SRG 660, STL 527, TAK 671 |
+| quiet move (§6.3, >= 25 %) | 986 (25.0 %) |
+| defensive move (§6.3, >= 15 %) | 657 (16.7 %) |
+| "Hier ist nichts" (§6.3, >= 10 %) | **0** |
+
+The quiet and defensive shares are **reserved**, not sampled: the natural
+mixture of the database is about 5 % quiet, which is precisely the defect §6.3
+describes ("Jede Aufgabensammlung sagt durch ihr bloßes Format: *Hier gibt es
+etwas*"). The importer holds a share of every cell for them and drops general
+items at the end until the shares hold — 1020 of them here. Coverage is
+the cheaper thing to give up.
+
+**The last row is the honest gap.** A Lichess puzzle has a winning line by
+construction, so positions where *nothing* wins cannot come from here. §6.3
+says how they have to be made instead — all legal moves through MultiPV, keep
+the position when `max(dW) <= 8` and at least three moves have `dW <= 5` — out
+of the Lichess evaluation database or the learner's own games. Until that
+exists, the bank still teaches "there is always something here", which is the
+assumption §6.3 was written to destroy. It is 10 % of the mixture and it is
+missing; saying so beats letting the two rows above it look like the whole
+story.
+
+Explanations are generated. Where the Lichess themes name a motif, the sentence
+names it too (after solving, never before — §6.2). Where they do not, the
+sentence is *computed* on the board: whether the line ends in mate, and what it
+wins. Nothing in it is guessed; a fabricated reason would be worse than none.

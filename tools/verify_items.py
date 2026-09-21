@@ -39,7 +39,8 @@ What is checked, item by item
     the best move that is not accepted is wide enough that the item has one
     answer.  Moves within a hair of the best one are collected into
     `alsoAccepted`; if three moves are that close the item is rejected.
-4.  No duplicate positions, no duplicate ids.
+4.  No duplicate positions, no duplicate ids, and the `line` of a multi-move
+    item plays through and ends on the learner's move (teacher.md §6.5).
 5.  The claimed dimension is plausible for the position (see DIMENSION_CHECKS).
 6.  At least a quarter of the bank is quiet: best move neither capture nor
     check nor promotion, and not an immediate threat to win material either
@@ -104,7 +105,10 @@ THREAT_CP = 200
 DIMENSIONS = ("TAK", "SRG", "REC", "END", "STL", "ERD")
 
 # Difficulty bands, ~150 Elo wide, covering the range the app addresses.
-BAND_LO, BAND_HI, BAND_WIDTH = 700, 2050, 150
+# teacher.md §4.2 stratifies the bank over 600 to 2200; the hand-written items
+# only ever reached 720..2030, and the bounds were written from them. The
+# imported Lichess items use the whole range, so the range is the spec's now.
+BAND_LO, BAND_HI, BAND_WIDTH = 600, 2200, 200
 
 PIECE_VALUE = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
                chess.ROOK: 5, chess.QUEEN: 9}
@@ -431,6 +435,26 @@ def structural_checks(items):
         if key in seen_positions:
             problems.append("%s: duplicate position, same as %s" % (where, seen_positions[key]))
         seen_positions[key] = where
+
+        # The line (teacher.md §6.5). A one-move item has one entry; anything
+        # longer has to alternate learner, opponent, learner and end on the
+        # learner, or the last thing they do is watch. And it has to play
+        # through: a bank entry that does not is worse than no entry.
+        line = item.get("line") or [item.get("solution")]
+        if line[0] != item.get("solution"):
+            problems.append("%s: line starts with %s but solution says %s"
+                            % (where, line[0], item.get("solution")))
+        if len(line) % 2 == 0:
+            problems.append("%s: line has %d plies and must end on the learner's move"
+                            % (where, len(line)))
+        probe = board.copy()
+        for ply, move in enumerate(line):
+            try:
+                probe.push_uci(move)
+            except (ValueError, AssertionError):
+                problems.append("%s: move %d of the line (%s) is not legal there"
+                                % (where, ply + 1, move))
+                break
     return problems
 
 

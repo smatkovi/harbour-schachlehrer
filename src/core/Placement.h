@@ -50,6 +50,17 @@ constexpr double kLogitElo = 173.7;
 // four items out of 25 — and almost nobody walks out.
 constexpr double kTargetOffset = 147.0;
 
+// The range the estimate is allowed to take. teacher.md §4.2 stratifies the
+// item bank over 600 to 2200, and §4.6 is explicit that 25 items give one
+// value to about +-80 — so a number outside this range is not a measurement,
+// it is the estimator walking away from an empty shelf. A learner who answers
+// twenty five items wrong is not at -700; they are below what this test can
+// measure, and the floor is how that gets said. Without it the app offers
+// "Aufgaben um -850" on the result screen and asks the bank for positions that
+// cannot exist.
+constexpr double kThetaFloor = 400.0;
+constexpr double kThetaCeiling = 2400.0;
+
 struct PlacementItem {
     std::string id;
     Dimension dimension = Dimension::TAK;

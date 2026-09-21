@@ -25,10 +25,45 @@
 
 #include <QDateTime>
 #include <QFileInfo>
+#include <QSettings>
 
 namespace schach {
 
 namespace {
+
+// A space-separated UCI line back into its moves. Split by hand: the enum
+// that says "skip the empty parts" moved from QString to Qt in 5.14, and this
+// app is built against 5.6.
+QStringList splitUci(const QString& text)
+{
+    QStringList out;
+    const QStringList parts = text.split(QLatin1Char(' '));
+    for (int i = 0; i < parts.size(); ++i) {
+        if (!parts.at(i).isEmpty())
+            out << parts.at(i);
+    }
+    return out;
+}
+
+// UCI moves as one space-separated string. The line travels through QVariant
+// maps and the database in this form; nothing about it is chess-specific.
+std::string joinUci(const std::vector<std::string>& moves)
+{
+    std::string out;
+    for (std::size_t i = 0; i < moves.size(); ++i) {
+        if (i)
+            out += ' ';
+        out += moves[i];
+    }
+    return out;
+}
+
+// How many fetched exercises the app keeps by default once the learner has
+// allowed it. 500 is about a megabyte on the disk and a dozen requests of
+// fifty; it roughly doubles what ships, which is the point — teacher.md §5.2
+// wants a position the learner has not seen, and a bank that never grows runs
+// out of those.
+const int kDefaultFeedTarget = 500;
 
 // Sparring: 50–250 ms per move (docs/design.md §5). Enough for a decent move
 // on a phone, short enough that the board never feels stuck.
@@ -55,6 +90,7 @@ TeacherEngine::TeacherEngine(QObject* parent)
     , m_sparring(new ::schach::Sparring(this))
     , m_opponentTimer(new QTimer(this))
     , m_placement(0)
+    , m_feed(0)
     , m_reviewIndex(-1)
     , m_measuredAt(0)
     , m_liveSaved(false)
@@ -137,7 +173,13 @@ void TeacherEngine::setPaths(const QString& enginePath, const QString& syzygyPat
     m_database->open(databasePath);
     // §3.3: the token lives beside the database, in the app's own data
     // directory, with 0600 — never in QSettings.
-    m_lichess->setDataDirectory(QFileInfo(databasePath).absolutePath());
+    const QString dataDirectory = QFileInfo(databasePath).absolutePath();
+    m_lichess->setDataDirectory(dataDirectory);
+    if (!m_feed) {
+        m_feed = new PuzzleFeed(m_lichess, this);
+        connect(m_feed, SIGNAL(changed()), this, SIGNAL(feedChanged()));
+    }
+    m_feedDirectory = dataDirectory;
     // A token from an earlier run means the event stream can come up at once;
     // no token means the app behaves exactly as it did before M8.
     m_lichess->loadToken();
@@ -638,13 +680,128 @@ void TeacherEngine::setItemBankPath(const QString& path)
         qWarning("placement items unavailable: %s", qPrintable(m_items.error()));
 }
 
+void TeacherEngine::addItemBankPath(const QString& path)
+{
+    if (path.isEmpty() || !QFileInfo(path).isReadable())
+        return;   // not shipped in this build; the first bank carries the app
+    if (!m_items.merge(path))
+        qWarning("extra items unavailable: %s", qPrintable(m_items.error()));
+}
+
+// --- new exercises from Lichess (teacher.md §5.2, §0.2) ----------------------
+
+void TeacherEngine::setThemesPath(const QString& path)
+{
+    if (!m_feed)
+        return;
+    m_feed->setPaths(m_feedDirectory, path);
+
+    // The two settings that belong to the learner and have to survive a
+    // restart. QSettings and not the database, because they are preferences
+    // and not measurements — and the organisation and application names were
+    // set in main() to match [X-Sailjail] in the desktop file, without which
+    // Sailjail hands the app a different, empty settings file every start.
+    QSettings settings;
+    settings.beginGroup(QStringLiteral("puzzleFeed"));
+    const bool allowed = settings.value(QStringLiteral("allowed"), false).toBool();
+    const int target = settings.value(QStringLiteral("target"), kDefaultFeedTarget).toInt();
+    settings.endGroup();
+
+    m_feed->load();
+    m_feed->setTarget(target);
+    // What was fetched before is merged whether or not fetching is allowed
+    // now: those items are already on the disk and already paid for.
+    addItemBankPath(m_feed->poolPath());
+    // Only this puts anything on the wire, and only if the learner said yes.
+    m_feed->setAllowed(allowed);
+    emit feedChanged();
+}
+
+bool TeacherEngine::feedAllowed() const { return m_feed && m_feed->allowed(); }
+int TeacherEngine::feedCount() const { return m_feed ? m_feed->count() : 0; }
+int TeacherEngine::feedTarget() const { return m_feed ? m_feed->target() : 0; }
+bool TeacherEngine::feedBusy() const { return m_feed && m_feed->fetching(); }
+QString TeacherEngine::feedMessage() const { return m_feed ? m_feed->message() : QString(); }
+
+void TeacherEngine::setFeedAllowed(bool allowed)
+{
+    if (!m_feed || m_feed->allowed() == allowed)
+        return;
+    QSettings settings;
+    settings.beginGroup(QStringLiteral("puzzleFeed"));
+    settings.setValue(QStringLiteral("allowed"), allowed);
+    settings.endGroup();
+    m_feed->setAllowed(allowed);
+    emit feedChanged();
+}
+
+void TeacherEngine::setFeedTarget(int items)
+{
+    if (!m_feed || m_feed->target() == items)
+        return;
+    QSettings settings;
+    settings.beginGroup(QStringLiteral("puzzleFeed"));
+    settings.setValue(QStringLiteral("target"), items);
+    settings.endGroup();
+    m_feed->setTarget(items);
+    emit feedChanged();
+}
+
+void TeacherEngine::fetchPuzzles()
+{
+    if (!m_feed)
+        return;
+    // Not while a rated game is running: the client makes one request at a
+    // time (§3.4), and a batch of puzzles must never be in front of a move.
+    if (!m_liveGameId.isEmpty()) {
+        setFeedback(tr("Während der Partie hole ich nichts nach. Danach gern."),
+                    QStringLiteral("feed.live"));
+        return;
+    }
+    m_feed->fetchNow();
+}
+
+void TeacherEngine::clearFetchedPuzzles()
+{
+    if (!m_feed)
+        return;
+    m_feed->clear();
+    // The bank keeps what it already merged until the next start; saying so is
+    // better than pretending the items vanished from this session too.
+    setFeedback(tr("Die geholten Aufgaben sind gelöscht. Beim nächsten Start "
+                   "arbeitet die App wieder mit den mitgelieferten."),
+                QStringLiteral("feed.cleared"));
+    emit feedChanged();
+}
+
 void TeacherEngine::startPlacement()
 {
     if (refusedWhileLive())
         return;
     delete m_placement;
-    m_placement = new core::Placement(0);
+    // §4.7 starts the anchors 100 points below what is already known about the
+    // learner — a self-reported club rating there, the last measurement here.
+    // Starting from 1000 every time was why a retest opened with the same six
+    // positions as the first test and could not place anybody above about
+    // 1400: twenty-five items move theta roughly 440 points at most, so the
+    // ceiling was the *starting point* plus that, not the learner's strength.
+    int prior = 0;
+    if (m_database->isOpen()) {
+        double theta = 0.0;
+        QVector<double> perDimension;
+        if (m_database->latestSkill(theta, perDimension) && theta > 0.0)
+            prior = static_cast<int>(theta);
+    }
+    m_placement = new core::Placement(prior);
     m_usedItems.clear();
+    // The solutions of the *last* test are not the solutions of this one. Left
+    // over, they kept counting past 25 and a retest opened its review on items
+    // the learner answered weeks ago.
+    m_answered.clear();
+    m_reviewIndex = -1;
+    m_liveSaved = false;
+    emit reviewChanged();
+    m_seenItems = m_database->isOpen() ? m_database->placementItemsSeen() : QStringList();
     setMode(Placement);
     m_taskClock.start();
     // §4.1: it must not feel like an exam — no timer, no running score, the
@@ -661,6 +818,11 @@ void TeacherEngine::startSession()
         setPrompt(tr("Ich kann gerade nichts speichern, aber spielen geht."));
         return;
     }
+    m_answered.clear();
+    m_reviewIndex = -1;
+    m_liveSaved = false;
+    emit reviewChanged();
+
     const qint64 day = today();
     const QVector<core::Card> due = m_database->dueCards(day);
     std::vector<core::Card> pool;
@@ -776,18 +938,50 @@ bool TeacherEngine::play(int fromSquare, int toSquare, const QString& promotion)
 
     if (m_mode == Drill || m_mode == Placement) {
         const int milliseconds = m_taskClock.isValid() ? static_cast<int>(m_taskClock.elapsed()) : 0;
-        // An item may have more than one move that is just as good; the engine
-        // decided that when the bank was built, not the learner here.
         const QString played = QString::fromStdString(uci);
-        const bool correct = !m_solutionUci.isEmpty()
-                && (played == m_solutionUci
-                    || m_task.value(QStringLiteral("alsoAccepted")).toStringList().contains(played));
-        m_lastAnswer = played;
-        m_position.play(uci);
+
+        // An item may have more than one first move that is just as good; the
+        // engine decided that when the bank was built, not the learner here.
+        // It only applies to the move that opens the line — after that the
+        // line is the line.
+        const bool acceptedAlternative = m_line.step() == 0
+                && m_task.value(QStringLiteral("alsoAccepted")).toStringList().contains(played)
+                && m_line.line().size() <= 1;
+
+        const core::SolutionLine::Verdict verdict =
+                acceptedAlternative ? core::SolutionLine::Verdict::Solved : m_line.play(uci);
+
+        if (verdict == core::SolutionLine::Verdict::Accepted) {
+            // Right so far, and there is more to come. Nothing is judged and
+            // nothing is said: a running right/wrong signal at every half move
+            // would turn entering a line into twenty little exams (§4.1).
+            syncBoardToLine();
+            updateLineProgress();
+            return true;
+        }
+
+        // Either the line is complete or it broke. The move goes on the board
+        // in both cases — the learner has to see what they just played.
+        if (verdict == core::SolutionLine::Verdict::Wrong) {
+            if (m_position.isLegal(uci))
+                m_position.play(uci);
+        } else if (acceptedAlternative) {
+            m_position.play(uci);
+        } else {
+            syncBoardToLine();
+        }
+        // What the learner answered: the first move of their line, because
+        // that is what the review page compares against the first move of the
+        // solution. The place where the line broke is carried separately.
+        m_lastAnswer = m_line.entered().empty()
+                ? played
+                : QString::fromStdString(m_line.entered().front());
+        if (verdict == core::SolutionLine::Verdict::Wrong && m_line.divergedAt() > 0)
+            m_task[QStringLiteral("brokeAt")] = m_line.divergedAt();
         m_selected = -1;
         emit positionChanged();
         emit selectionChanged();
-        finishDrillTask(correct, milliseconds);
+        finishDrillTask(verdict == core::SolutionLine::Verdict::Solved, milliseconds);
         return true;
     }
 
@@ -954,14 +1148,16 @@ void TeacherEngine::requestHint()
     case 3:
         if (!m_solutionUci.isEmpty()) {
             setFeedback(tr("Der erste Zug ist %1. Die Folge findest du selbst.")
-                                .arg(QString::fromStdString(m_position.sanOf(m_solutionUci.toStdString()))),
+                                .arg(lineSan(m_taskFen, QStringList() << m_solutionUci)),
                         QStringLiteral("hint.3"));
         }
         break;
     default:
-        if (!m_solutionUci.isEmpty()) {
+        if (!m_line.line().empty()) {
             setFeedback(tr("Die Lösung ist %1.")
-                                .arg(QString::fromStdString(m_position.sanOf(m_solutionUci.toStdString()))),
+                                .arg(lineSan(m_taskFen,
+                                             splitUci(QString::fromStdString(
+                                                     joinUci(m_line.line()))))),
                         QStringLiteral("hint.4"));
         }
         break;
@@ -1036,7 +1232,7 @@ void TeacherEngine::loadNextTask()
         }
         const core::Dimension dimension = m_placement->nextDimension();
         const double difficulty = m_placement->nextDifficulty();
-        const PlacementItem* item = m_items.pick(dimension, difficulty, m_usedItems);
+        const PlacementItem* item = m_items.pick(dimension, difficulty, m_usedItems, m_seenItems);
         if (!item) {
             // No position, no question. Saying so is the only honest answer;
             // asking about the starting position would measure nothing.
@@ -1054,18 +1250,37 @@ void TeacherEngine::loadNextTask()
         m_solutionUci = item->solution;
         m_taskFen = item->fen;
         m_lastAnswer.clear();
+        // §4.1 measures what the learner sees unaided, so the test never
+        // answers for the opponent: the whole line is entered, always.
+        std::vector<std::string> line;
+        for (int i = 0; i < item->line.size(); ++i)
+            line.push_back(item->line.at(i).toStdString());
+        m_line.start(m_position, line, core::SolutionLine::Mode::WholeLine);
 
         QVariantMap task;
         task[QStringLiteral("kind")] = QStringLiteral("placement");
         // §6.2: the learner never learns the theme *before* solving, so the
         // dimension is carried for the estimator only, not for display.
-        task[QStringLiteral("difficulty")] = difficulty;
+        //
+        // And it is the **item's** difficulty that is carried, not the one that
+        // was asked for. §4.4 updates theta with `p(theta, delta)` where delta
+        // is the difficulty of the item that was actually answered; feeding it
+        // the request instead is a measurement error of however far the bank
+        // had to reach — up to the whole selection window, and more when it
+        // runs out. The request is kept beside it for the diagnostics.
+        task[QStringLiteral("difficulty")] = item->difficulty;
+        task[QStringLiteral("requested")] = difficulty;
         task[QStringLiteral("index")] = m_placement->answered() + 1;
         task[QStringLiteral("total")] = 25;
         task[QStringLiteral("dimension")] = QString::fromLatin1(core::dimensionKey(dimension));
         task[QStringLiteral("itemId")] = item->id;
         task[QStringLiteral("explanationAfterSolving")] = item->explanation;
         task[QStringLiteral("alsoAccepted")] = item->alsoAccepted;
+        task[QStringLiteral("moves")] = item->line.size();
+        task[QStringLiteral("entered")] = 0;
+        task[QStringLiteral("remaining")] = item->line.size();
+        task[QStringLiteral("multiMove")] = item->line.size() > 1;
+        task[QStringLiteral("guided")] = false;
         m_task = task;
         setPrompt(m_position.whiteToMove() ? tr("Weiß am Zug: Was machst du hier?")
                                            : tr("Schwarz am Zug: Was machst du hier?"));
@@ -1097,8 +1312,14 @@ void TeacherEngine::rememberAnswer(bool correct)
     entry.itemId = m_task.value(QStringLiteral("itemId")).toString();
     entry.fen = m_taskFen;
     entry.solution = m_solutionUci;
+    entry.solutionLine = QString::fromStdString(joinUci(m_line.line()));
     entry.played = m_lastAnswer;
+    // The placement items carry a sentence, the cards a title; both are the
+    // thing that is said *after* solving and never before (§6.2).
     entry.explanation = m_task.value(QStringLiteral("explanationAfterSolving")).toString();
+    if (entry.explanation.isEmpty())
+        entry.explanation = m_task.value(QStringLiteral("titleAfterSolving")).toString();
+    entry.cardId = m_currentCardId;
     entry.correct = correct;
     entry.number = m_answered.size() + 1;
     entry.difficulty = m_task.value(QStringLiteral("difficulty")).toDouble();
@@ -1108,15 +1329,30 @@ void TeacherEngine::rememberAnswer(bool correct)
     if (!entry.fen.isEmpty()) {
         core::Position position;
         if (position.setFen(entry.fen.toStdString())) {
-            if (!entry.solution.isEmpty())
+            // The whole line in SAN, not just its first move: an answer the
+            // learner could not finish is not shown to them as one move.
+            if (!entry.solutionLine.isEmpty()) {
+                entry.solutionSan = lineSan(entry.fen, splitUci(entry.solutionLine));
+            } else if (!entry.solution.isEmpty()) {
                 entry.solutionSan = QString::fromStdString(
                     position.sanOf(entry.solution.toStdString()));
+            }
             if (!entry.played.isEmpty())
                 entry.playedSan = QString::fromStdString(
                     position.sanOf(entry.played.toStdString()));
         }
     }
     m_answered.append(entry);
+    // Remembered across tests, so the next one opens on positions this learner
+    // has not seen (§5.2). Written per item and not at the end, because a test
+    // that is broken off has still shown its positions.
+    if (m_database->isOpen() && !entry.itemId.isEmpty()) {
+        m_database->rememberPlacementItem(entry.itemId,
+                                          QDateTime::currentMSecsSinceEpoch() / 1000,
+                                          correct);
+        if (!m_seenItems.contains(entry.itemId))
+            m_seenItems << entry.itemId;
+    }
     emit reviewChanged();
 }
 
@@ -1139,6 +1375,110 @@ QVariantMap TeacherEngine::review() const
     return map;
 }
 
+QVariantMap TeacherEngine::solutionView() const
+{
+    QVariantMap map;
+    map[QStringLiteral("active")] = m_showStep >= 0;
+    if (m_showStep < 0 || m_reviewIndex < 0 || m_reviewIndex >= m_answered.size())
+        return map;
+    const AnsweredItem& entry = m_answered.at(m_reviewIndex);
+    map[QStringLiteral("step")] = m_showStep;
+    map[QStringLiteral("total")] = m_showLine.size();
+    map[QStringLiteral("atStart")] = m_showStep <= 0;
+    map[QStringLiteral("atEnd")] = m_showStep >= m_showLine.size();
+    map[QStringLiteral("san")] = entry.solutionSan;
+    // The line move by move, so the panel can mark where the board stands
+    // instead of printing one long string the learner has to count through.
+    map[QStringLiteral("sanMoves")] = entry.solutionSan.isEmpty()
+            ? QStringList()
+            : entry.solutionSan.split(QLatin1Char(' '));
+    map[QStringLiteral("playedSan")] = entry.playedSan;
+    map[QStringLiteral("correct")] = entry.correct;
+    map[QStringLiteral("explanation")] = entry.explanation;
+    // The move that comes next, so the strip can say what the tap will do
+    // without giving away more than the next half move.
+    if (m_showStep >= 0 && m_showStep < m_showLine.size()) {
+        core::Position position;
+        if (position.setFen(entry.fen.toStdString())) {
+            for (int i = 0; i < m_showStep; ++i)
+                position.play(m_showLine.at(i).toStdString());
+            map[QStringLiteral("nextSan")] = QString::fromStdString(
+                    position.sanOf(m_showLine.at(m_showStep).toStdString()));
+        }
+    }
+    return map;
+}
+
+void TeacherEngine::playbackTo(int step)
+{
+    if (m_reviewIndex < 0 || m_reviewIndex >= m_answered.size())
+        return;
+    const AnsweredItem& entry = m_answered.at(m_reviewIndex);
+    if (step < 0)
+        step = 0;
+    if (step > m_showLine.size())
+        step = m_showLine.size();
+
+    // Replayed from the asked position every time rather than undone: the
+    // board then carries the history, so it marks the move that was just made
+    // exactly as it does in a game.
+    m_position.setFen(entry.fen.toStdString());
+    for (int i = 0; i < step; ++i) {
+        if (!m_position.play(m_showLine.at(i).toStdString())) {
+            step = i;
+            break;
+        }
+    }
+    m_showStep = step;
+    m_selected = -1;
+    emit positionChanged();
+    emit selectionChanged();
+    emit reviewChanged();
+}
+
+void TeacherEngine::showSolution()
+{
+    if (refusedWhileLive())
+        return;
+    // A task that is still open: looking ends it, unsolved. For the placement
+    // test that is the same cost as skipping (§4.1 measures what the learner
+    // sees unaided); in the drill it is hint level 4 of §6.6, after which
+    // there is nothing left to produce.
+    const bool taskOpen = m_reviewIndex < 0 && !m_task.isEmpty()
+            && (m_mode == Drill || m_mode == Placement);
+    if (taskOpen) {
+        const int milliseconds = m_taskClock.isValid()
+                ? static_cast<int>(m_taskClock.elapsed()) : 0;
+        m_lastAnswer.clear();
+        m_hintLevel = 4;
+        finishDrillTask(false, milliseconds);
+    }
+    if (m_answered.isEmpty())
+        return;
+    showAnswered(m_reviewIndex >= 0 ? m_reviewIndex : m_answered.size() - 1);
+}
+
+void TeacherEngine::solutionForward()
+{
+    if (m_showStep < 0)
+        return;
+    playbackTo(m_showStep + 1);
+}
+
+void TeacherEngine::solutionBack()
+{
+    if (m_showStep < 0)
+        return;
+    playbackTo(m_showStep - 1);
+}
+
+void TeacherEngine::hideSolution()
+{
+    m_showStep = -1;
+    m_showLine.clear();
+    endReview();
+}
+
 void TeacherEngine::showAnswered(int index)
 {
     if (index < 0 || index >= m_answered.size())
@@ -1148,15 +1488,22 @@ void TeacherEngine::showAnswered(int index)
         m_liveSolution = m_solutionUci;
         m_livePrompt = m_prompt;
         m_liveTask = m_task;
+        m_liveFlipped = m_flipped;
         m_liveSaved = true;
     }
     m_reviewIndex = index;
     const AnsweredItem& entry = m_answered.at(index);
+    // The line is stepped through rather than shown: teacher.md §6.5 has the
+    // app play the sequence back, and a multi-move answer cannot be read off a
+    // single position. It starts where the task started, at nothing played —
+    // the board says what was asked, and the learner walks forward.
+    m_showLine = splitUci(entry.solutionLine);
+    if (m_showLine.isEmpty() && !entry.solution.isEmpty())
+        m_showLine << entry.solution;
+    m_showStep = 0;
     m_position.setFen(entry.fen.toStdString());
     m_selected = -1;
     m_flipped = !m_position.whiteToMove();
-    // The board highlights lastMove(); while reviewing that is the solution,
-    // so the right move is marked on the position it was asked in.
     setPrompt(entry.correct
                   ? tr("Aufgabe %1 von %2 — richtig.").arg(entry.number).arg(m_answered.size())
                   : tr("Aufgabe %1 von %2.").arg(entry.number).arg(m_answered.size()));
@@ -1201,6 +1548,8 @@ void TeacherEngine::endReview()
     if (m_reviewIndex < 0)
         return;
     m_reviewIndex = -1;
+    m_showStep = -1;
+    m_showLine.clear();
     emit reviewChanged();
     // Back to exactly where the test stood — the same item, not a fresh one.
     if (m_liveSaved) {
@@ -1208,6 +1557,12 @@ void TeacherEngine::endReview()
             m_position.setFen(m_liveFen.toStdString());
         m_solutionUci = m_liveSolution;
         m_task = m_liveTask;
+        // The task is always "you are to move", so the board has to be seen
+        // from that side again — the review item may have been the other one.
+        if (m_flipped != m_liveFlipped) {
+            m_flipped = m_liveFlipped;
+            emit boardChanged();
+        }
         setPrompt(m_livePrompt);
         setFeedback(QString(), QString());
         m_selected = -1;
@@ -1247,6 +1602,9 @@ QVector<core::Card> TeacherEngine::starterCards(core::Dimension dimension) const
         card.origin = core::CardOrigin::Library;
         card.seedFen = item->fen.toStdString();
         card.solutionUci = item->solution.toStdString();
+        for (int move = 0; move < item->line.size(); ++move)
+            card.solutionLine.push_back(item->line.at(move).toStdString());
+        card.normaliseSolution();
         card.createdDay = today();
         card.srs.dueDay = today();
         cards.append(card);
@@ -1254,16 +1612,95 @@ QVector<core::Card> TeacherEngine::starterCards(core::Dimension dimension) const
     return cards;
 }
 
+// The line in German notation, for the feedback and the solution view.
+// Worked out on the position it was asked in, never on the board as it is now.
+QString TeacherEngine::lineSan(const QString& fen, const QStringList& line)
+{
+    core::Position position;
+    if (!position.setFen(fen.toStdString()))
+        return line.join(QLatin1Char(' '));
+    QStringList out;
+    for (int i = 0; i < line.size(); ++i) {
+        const std::string uci = line.at(i).toStdString();
+        const std::string san = position.sanOf(uci);
+        if (san.empty())
+            break;
+        out << QString::fromStdString(san);
+        position.play(uci);
+    }
+    return out.join(QLatin1Char(' '));
+}
+
+// The board the learner sees follows the line they are composing — that is
+// rung 0 of the ladder in §6.5 ("Stellung, normal"). The rungs that hide the
+// intermediate positions come later and are optional; §6.5 says so itself,
+// because the evidence for visualisation training is [C].
+void TeacherEngine::syncBoardToLine()
+{
+    m_position.setFen(m_line.startPosition().fen());
+    const std::vector<std::string>& entered = m_line.entered();
+    for (std::size_t i = 0; i < entered.size(); ++i)
+        m_position.play(entered[i]);
+    m_selected = -1;
+    emit positionChanged();
+    emit selectionChanged();
+}
+
+// How far along the line the learner is. Deliberately a count and not a
+// description: "noch zwei Züge" says nothing about what sort of task it is,
+// which §6.2 forbids before solving.
+void TeacherEngine::updateLineProgress()
+{
+    m_task[QStringLiteral("moves")] = int(m_line.line().size());
+    m_task[QStringLiteral("entered")] = int(m_line.entered().size());
+    m_task[QStringLiteral("remaining")] = m_line.remaining();
+    m_task[QStringLiteral("multiMove")] = m_line.line().size() > 1;
+    emit taskChanged();
+}
+
+bool TeacherEngine::undoEntry()
+{
+    if (m_mode != Drill && m_mode != Placement)
+        return false;
+    if (m_reviewIndex >= 0 || !m_line.undo())
+        return false;
+    syncBoardToLine();
+    updateLineProgress();
+    return true;
+}
+
 void TeacherEngine::presentCard(const core::Card& card)
 {
     m_currentCardId = QString::fromStdString(card.id);
     m_solutionUci = QString::fromStdString(card.solutionUci);
     m_position.setFen(card.seedFen);
+    m_taskFen = QString::fromStdString(card.seedFen);
     m_selected = -1;
+
+    // §6.1(3) and §5.6: the introductory instance of a new pattern is the one
+    // place where the app answers for the opponent. Everywhere else the whole
+    // line is the learner's to enter — that is the difference between training
+    // execution and training calculation (§6.5).
+    core::Card copy = card;
+    copy.normaliseSolution();
+    std::vector<std::string> line = copy.solutionLine;
+    // "Never reviewed" is exactly block B step 1: the first, deliberately easy
+    // encounter with this pattern. From the second repetition on, the line is
+    // the learner's to enter in full.
+    const bool guided = card.srs.state == core::CardState::New && card.srs.reps == 0
+            && line.size() > 1;
+    m_line.start(m_position, line,
+                 guided ? core::SolutionLine::Mode::Guided
+                        : core::SolutionLine::Mode::WholeLine);
 
     QVariantMap task;
     task[QStringLiteral("kind")] = QStringLiteral("card");
     task[QStringLiteral("cardId")] = m_currentCardId;
+    task[QStringLiteral("moves")] = int(line.size());
+    task[QStringLiteral("entered")] = 0;
+    task[QStringLiteral("remaining")] = int(line.size());
+    task[QStringLiteral("multiMove")] = line.size() > 1;
+    task[QStringLiteral("guided")] = guided;
     // The title is deliberately *not* part of the prompt: naming the motif
     // before solving destroys the measurement (§6.2).
     task[QStringLiteral("titleAfterSolving")] = QString::fromStdString(card.title);
@@ -1292,14 +1729,23 @@ void TeacherEngine::finishDrillTask(bool correct, int milliseconds)
         m_placement->record(dimension, difficulty, correct);
         rememberAnswer(correct);
         // §4.1: no right/wrong signal after every item, only the solution.
-        setFeedback(correct ? tr("So geht es.") : tr("Hier war %1 besser.")
-                                      .arg(m_answered.isEmpty() || m_answered.last().solutionSan.isEmpty()
-                                               ? tr("ein anderer Zug")
-                                               : m_answered.last().solutionSan),
+        const QString wanted = m_answered.isEmpty() || m_answered.last().solutionSan.isEmpty()
+                ? tr("ein anderer Zug")
+                : m_answered.last().solutionSan;
+        setFeedback(correct         ? tr("So geht es.")
+                    : m_line.divergedAt() > 0
+                                    ? tr("Der Anfang stimmte. Weiter geht es mit %1.").arg(wanted)
+                                    : tr("Hier war %1 besser.").arg(wanted),
                     QStringLiteral("placement"));
         loadNextTask();
         return;
     }
+
+    // The solution of an exercise has to stay reachable after it was answered.
+    // Until now only the placement test kept its items, so a drill task was
+    // gone the moment the next one loaded and the one sentence of feedback was
+    // all the learner ever got to see of it.
+    rememberAnswer(correct);
 
     // §5.1: the grade is derived, never asked.
     const core::Rating rating = core::ratingFor(correct, m_hintLevel > 0, milliseconds);
@@ -1316,10 +1762,27 @@ void TeacherEngine::finishDrillTask(bool correct, int milliseconds)
         m_database->recordReview(m_currentCardId, QDateTime::currentMSecsSinceEpoch() / 1000,
                                  rating, milliseconds, correct, m_hintLevel > 0);
     }
-    setFeedback(correct
-                        ? tr("Richtig. %1").arg(m_task.value(QStringLiteral("titleAfterSolving")).toString())
-                        : tr("Der Zug hält nicht. Richtig war %1.").arg(m_solutionUci),
-                QStringLiteral("drill"));
+    // §6.6: a rejection is a sentence, and on a line it names the move the
+    // learner broke off at — "wrong" spread over four moves is the bare
+    // "falsch" that the same section forbids.
+    const QString solution = lineSan(m_taskFen,
+                                     splitUci(QString::fromStdString(joinUci(m_line.line()))));
+    QString sentence;
+    if (correct) {
+        sentence = tr("Richtig. %1").arg(m_task.value(QStringLiteral("titleAfterSolving")).toString());
+    } else if (m_line.divergedAt() > 0 && (m_line.divergedAt() % 2) == 1) {
+        // The learner's own moves sit on the even plies; an odd one means they
+        // got his answer wrong, which is a different mistake and worth saying
+        // so — it is the E5-near "right idea, wrong order" of §6.6.
+        sentence = tr("Deine Züge stimmen. Er antwortet aber anders: %1.").arg(solution);
+    } else if (m_line.divergedAt() > 0) {
+        sentence = tr("Bis dahin stimmte es. Ab deinem %1. Zug geht es anders weiter: %2.")
+                           .arg(m_line.divergedAt() / 2 + 1)
+                           .arg(solution);
+    } else {
+        sentence = tr("Der Zug hält nicht. Richtig war %1.").arg(solution);
+    }
+    setFeedback(sentence, QStringLiteral("drill"));
     ++m_sessionIndex;
     emit progressChanged();
     loadNextTask();
@@ -1548,6 +2011,10 @@ void TeacherEngine::beginLiveGame(const QString& gameId)
     if (gameId.isEmpty())
         return;
     m_liveGameId = gameId;
+    // The puzzle top-up waits too: one request at a time (§3.4), and nobody
+    // is waiting for the pool while somebody is waiting for the board.
+    if (m_feed)
+        m_feed->setHeld(true);
     // Not paused — terminated. A paused engine is one signal away from
     // answering a question that would mark the user's account.
     m_engine->cancelAll();
@@ -1578,6 +2045,8 @@ void TeacherEngine::endLiveGame()
     if (m_liveGameId.isEmpty())
         return;
     m_liveGameId.clear();
+    if (m_feed)
+        m_feed->setHeld(false);
     m_engine->setFairPlayLock(false);
     // The game is over, so the engine may come back. If the binary is missing
     // this fails exactly as it does everywhere else, and the app stays usable.
@@ -1622,6 +2091,13 @@ bool TeacherEngine::lichessLoggedIn() const { return m_lichess->state() == Liche
 QString TeacherEngine::lichessAccount() const { return m_lichess->account(); }
 QString TeacherEngine::lichessMessage() const { return m_lichess->message(); }
 QString TeacherEngine::lichessAuthUrl() const { return m_lichess->authorizationUrl(); }
+QString TeacherEngine::solutionLineForTest() const
+{
+    return QString::fromStdString(joinUci(m_line.line()));
+}
+
+QString TeacherEngine::lichessKeyStore() const { return m_lichess->tokenStoreDescription(); }
+bool TeacherEngine::lichessKeyEncrypted() const { return m_lichess->tokenStoreEncrypted(); }
 bool TeacherEngine::lichessConnected() const { return m_lichess->eventStreamOpen(); }
 bool TeacherEngine::lichessSeeking() const { return m_lichess->seeking(); }
 

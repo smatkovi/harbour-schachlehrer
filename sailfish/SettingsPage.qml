@@ -155,6 +155,90 @@ Page {
                 text: qsTr("Stockfish läuft als eigenes Programm neben der App und wird über UCI angesprochen. Die Endspieldatenbanken für drei und vier Steine sind im Paket enthalten; es wird nichts nachgeladen.")
             }
 
+            SectionHeader { text: qsTr("Nachschub an Aufgaben") }
+
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                wrapMode: Text.WordWrap
+                color: Style.secondaryColor
+                // teacher.md §5.2 is the reason this exists, and it is worth
+                // saying: a position that comes back measures whether you
+                // remember it, not whether you can do it.
+                text: qsTr("%1 Übungsstellungen sind gerade in Gebrauch, %2 liegen geholt "
+                           "bereit. Eine Stellung, die wiederkommt, misst nur noch, ob du sie "
+                           "kennst — deshalb ist Nachschub etwas wert. Geholte kommen beim "
+                           "nächsten Start dazu, nicht mitten in einer Sitzung.")
+                      .arg(teacher.itemCount).arg(teacher.feedCount)
+            }
+
+            TextSwitch {
+                text: qsTr("Neue Aufgaben von Lichess holen")
+                description: qsTr("Beim Start, wenn eine Verbindung da ist. Ohne das läuft alles "
+                                  "weiter — die App bringt ihre Aufgaben mit und braucht dafür "
+                                  "weder Netz noch Konto.")
+                checked: teacher.feedAllowed
+                onClicked: teacher.feedAllowed = !teacher.feedAllowed
+            }
+
+            Slider {
+                visible: teacher.feedAllowed
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                minimumValue: 100
+                maximumValue: 2000
+                stepSize: 100
+                value: teacher.feedTarget
+                label: qsTr("Höchstens %1 geholte Aufgaben").arg(Math.round(value))
+                valueText: Math.round(value)
+                onReleased: teacher.feedTarget = Math.round(value)
+            }
+
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                visible: teacher.feedMessage !== "" || teacher.feedBusy
+                wrapMode: Text.WordWrap
+                color: Style.secondaryColor
+                font.pixelSize: Style.fontSizeExtraSmall
+                text: teacher.feedBusy ? qsTr("Ich hole gerade welche …") : teacher.feedMessage
+            }
+
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: Style.paddingMedium
+                visible: teacher.feedAllowed
+
+                Button {
+                    text: qsTr("Jetzt holen")
+                    enabled: !teacher.feedBusy
+                    onClicked: teacher.fetchPuzzles()
+                }
+                Button {
+                    text: qsTr("Geholte löschen")
+                    enabled: teacher.feedCount > 0
+                    onClicked: feedRemorse.execute(qsTr("Löschen"),
+                                                   function () { teacher.clearFetchedPuzzles() })
+                }
+            }
+
+            RemorsePopup { id: feedRemorse }
+
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                wrapMode: Text.WordWrap
+                color: Style.secondaryColor
+                font.pixelSize: Style.fontSizeExtraSmall
+                // The honest version of where they come from, and of what the
+                // app does *not* do: the 304 MB database export stays on the
+                // build host, and the phone asks for fifty at a time.
+                text: qsTr("Geholt wird über die offene Lichess-Schnittstelle, fünfzig Stück je "
+                           "Anfrage und ohne Konto. Die vollständige Aufgabendatenbank ist 304 MB "
+                           "groß und wird nie auf das Telefon geladen; was die App mitbringt, ist "
+                           "eine daraus gebaute Auswahl.")
+            }
+
             SectionHeader { text: qsTr("Lichess") }
 
             Label {
@@ -184,7 +268,13 @@ Page {
                 wrapMode: Text.WordWrap
                 color: Style.secondaryColor
                 font.pixelSize: Style.fontSizeExtraSmall
-                text: qsTr("Der Zugangsschlüssel liegt in einer Datei im Datenverzeichnis dieser App, die nur sie selbst lesen darf — nicht in den Einstellungen und nicht im Klartext irgendwo sonst. Beim Abmelden wird er gelöscht und bei Lichess widerrufen.")
+                // platform.md §3.3 allows two places for the key and the app
+                // takes the better one it can get. Which one it got is the
+                // user's business, so the sentence says it rather than
+                // describing the good case and hoping.
+                text: teacher.lichessKeyEncrypted
+                      ? qsTr("Der Zugangsschlüssel liegt %1 — nicht in den Einstellungen und nicht im Klartext irgendwo sonst. Beim Abmelden wird er gelöscht und bei Lichess widerrufen.").arg(teacher.lichessKeyStore)
+                      : qsTr("Der Schlüsselspeicher von Sailfish OS antwortet nicht, deshalb liegt der Zugangsschlüssel %1 im Datenverzeichnis dieser App — nicht in den Einstellungen und nicht im Klartext irgendwo sonst. Beim Abmelden wird er gelöscht und bei Lichess widerrufen.").arg(teacher.lichessKeyStore)
             }
 
             Button {

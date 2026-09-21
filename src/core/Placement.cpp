@@ -83,9 +83,13 @@ Dimension Placement::nextDimension() const
 
 double Placement::nextDifficulty() const
 {
-    if (m_answers < kDimensionCount)
-        return m_state.theta - 100.0;   // anchors sit slightly below theta
-    return thetaOf(nextDimension()) - kTargetOffset;
+    const double target = m_answers < kDimensionCount
+            ? m_state.theta - 100.0            // anchors sit slightly below theta
+            : thetaOf(nextDimension()) - kTargetOffset;
+    // Asking the bank for something outside its range is asking for nothing:
+    // ItemBank::pick then falls back to the easiest item it has, every time,
+    // for every learner. The floor keeps the question answerable.
+    return std::min(std::max(target, kThetaFloor), kThetaCeiling);
 }
 
 void Placement::record(Dimension dimension, double itemDifficulty, bool correct,
@@ -104,6 +108,8 @@ void Placement::record(Dimension dimension, double itemDifficulty, bool correct,
     // §4.8: 60 % of the update works globally, 40 % on the dimension.
     m_state.theta += 0.6 * kTheta * (y - p);
     m_state.delta[index] += 0.4 * kTheta * (y - p);
+    // And it stays inside the range the bank covers; see kThetaFloor.
+    m_state.theta = std::min(std::max(m_state.theta, kThetaFloor), kThetaCeiling);
 
     if (item && item->selfGenerated) {
         // The item learns along; items move more slowly than people.
@@ -149,7 +155,8 @@ PlacementPlan Placement::plan(bool aborted) const
     result.seElo = seElo();
     result.items = m_answers;
     result.aborted = aborted;
-    result.startDifficulty = m_state.theta - kTargetOffset;
+    result.startDifficulty = std::min(std::max(m_state.theta - kTargetOffset, kThetaFloor),
+                                      kThetaCeiling);
     result.ordinal.fill(Ordinal::Unremarkable);
     result.thetaD.fill(m_state.theta);
 
@@ -164,7 +171,8 @@ PlacementPlan Placement::plan(bool aborted) const
     for (std::size_t i = 0; i < kDimensionCount; ++i) {
         const Dimension dimension = static_cast<Dimension>(i);
         const double deviation = shrink(m_state.answers[i]) * m_state.delta[i];
-        result.thetaD[i] = m_state.theta + deviation;
+        result.thetaD[i] = std::min(std::max(m_state.theta + deviation, kThetaFloor),
+                                    kThetaCeiling);
         if (std::fabs(deviation) > result.seElo) {
             result.ordinal[i] = deviation < 0.0 ? Ordinal::Weak : Ordinal::Strong;
             remarkable.push_back({ dimension, deviation });

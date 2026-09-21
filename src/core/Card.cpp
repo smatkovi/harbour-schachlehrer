@@ -83,6 +83,14 @@ std::string patternSlug(ErrorClass cls, Motif motif)
 
 } // namespace
 
+void Card::normaliseSolution()
+{
+    if (solutionLine.empty() && !solutionUci.empty())
+        solutionLine.push_back(solutionUci);
+    else if (solutionUci.empty() && !solutionLine.empty())
+        solutionUci = solutionLine.front();
+}
+
 std::string cardIdFor(ErrorClass cls, Motif motif)
 {
     std::string id = dimensionKey(dimensionOf(cls));

@@ -68,8 +68,21 @@ int main(int argc, char *argv[])
                       SailfishApp::pathTo(QStringLiteral("syzygy")).toLocalFile(),
                       SailfishApp::pathTo(QStringLiteral("net/nn-37f18f62d772.nnue")).toLocalFile(),
                       dataDirectory + QStringLiteral("/schachlehrer.sqlite"));
+    // Two banks, and the second one may simply not be there. The hand-written
+    // items carry the German explanations and the quiet quota of teacher.md
+    // §6.3; the imported Lichess ones carry the spread, the calibrated
+    // difficulties and the multi-move lines of §4.2 and §6.5
+    // (tools/import_lichess_puzzles.py builds them).
     teacher->setItemBankPath(
         SailfishApp::pathTo(QStringLiteral("items/placement.json")).toLocalFile());
+    teacher->addItemBankPath(
+        SailfishApp::pathTo(QStringLiteral("items/puzzles.json")).toLocalFile());
+    // And what the app fetched from Lichess on earlier starts, plus the table
+    // that lets it fetch more. Both are optional: with no network, no account
+    // and no permission the app runs on the two banks above and says nothing
+    // about it (teacher.md §0.2).
+    teacher->setThemesPath(
+        SailfishApp::pathTo(QStringLiteral("items/themes.json")).toLocalFile());
     view->rootContext()->setContextProperty(QStringLiteral("teacher"), teacher);
 
     view->setSource(SailfishApp::pathTo(QStringLiteral("qml/harbour-schachlehrer.qml")));
