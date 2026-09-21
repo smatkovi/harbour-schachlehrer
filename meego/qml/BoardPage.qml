@@ -33,7 +33,7 @@ import "."
 Page {
     id: page
     objectName: "boardPage"
-    orientationLock: PageOrientation.LockPortrait
+    orientationLock: PageOrientation.Automatic
 
     property bool sparring: teacher.mode === 3
     property bool drill: teacher.mode === 2
@@ -102,7 +102,7 @@ Page {
             Board {
                 id: board
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: page.width - 2 * Style.paddingSmall
+                width: Math.min(page.width, page.height) - 2 * Style.paddingSmall
                 height: width
                 // A Lichess game is played on OnlineGamePage, with its clocks
                 // and its rules; this board does not take moves for it.

@@ -3,7 +3,7 @@ Version: @VERSION@
 Section: user/games
 Priority: optional
 Architecture: armel
-Depends: libqt4-declarative (>= 4.7.4), libqt4-script (>= 4.7.4), libqt4-gui (>= 4.7.4), libqt4-sql (>= 4.7.4), libqt4-sql-sqlite, qt-components
+Depends: libqt4-declarative, libqt4-script, libqt4-gui, libqt4-sql, libqt4-sql-sqlite, qt-components
 Maintainer: Sebastian Matkovich <sebastian.matkovich@gmail.com>
 Homepage: https://github.com/smatkovi/harbour-schachlehrer
 Description: Schach lernen auf dem N9: messen, spielen, diagnostizieren, ueben

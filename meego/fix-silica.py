@@ -11,8 +11,11 @@ SUBST = [
     # to one instead, so "all" becomes "follow the device".
     (r'allowedOrientations:\s*Orientation\.All\b',
      'orientationLock: PageOrientation.Automatic'),
+    # Not LockPortrait, although that is what the Sailfish build asks for: the
+    # board is sized off the shorter side below, so landscape works too and is
+    # wanted on a device with a keyboard.
     (r'allowedOrientations:\s*Orientation\.Portrait(\s*\|\s*Orientation\.PortraitInverted)?',
-     'orientationLock: PageOrientation.LockPortrait'),
+     'orientationLock: PageOrientation.Automatic'),
     (r'allowedOrientations:\s*Orientation\.Landscape(\s*\|\s*Orientation\.LandscapeInverted)?',
      'orientationLock: PageOrientation.LockLandscape'),
     # ApplicationWindow.defaultAllowedOrientations has no counterpart at all;
@@ -40,6 +43,17 @@ SUBST = [
      r'\1Flickable {\n\2\3\n\2pressDelay: 150'),
     # Silica's Slider reports the end of a drag; the MeeGo one does not.
     (r'^(\s*)onReleased:', r'\1onPressedChanged: if (!pressed)'),
+    # Silica's Screen singleton does not exist here. Reading Screen.width gives
+    # undefined, the arithmetic around it gives NaN, and an item sized NaN is
+    # simply not drawn -- with no error anywhere. That is what kept the board
+    # off the page.
+    (r'\bScreen\.width\b', 'AppTheme.screenWidth'),
+    (r'\bScreen\.height\b', 'AppTheme.screenHeight'),
+    # A chessboard is square, so it has to fit the shorter side of the page.
+    # Sizing it off page.width alone only works while the page is locked to
+    # portrait, which it no longer is.
+    (r'width:\s*page\.width - 2 \* Style\.paddingSmall',
+     'width: Math.min(page.width, page.height) - 2 * Style.paddingSmall'),
     # Silica's Label fades a truncated line; a QtQuick 1.1 Text elides.
     (r'^(\s*)truncationMode:\s*TruncationMode\.\w+\s*$', r'\1elide: Text.ElideRight'),
 ]
@@ -78,6 +92,18 @@ BOARD_AXES_FROM = '''            // The whole turn of the board: both axes rever
 BOARD_AXES_TO = '''            // The turn is done in squareOfCell() above.
 '''
 
+# QtQuick 1.1 declares GridView.cellWidth and cellHeight as int, so a
+# fractional eighth of the board is rounded up: a 431.33 px grid asked for
+# 54 px cells, 8 of those need 432, and only seven fitted per row. The
+# board then came out as a staircase. Rounding down costs a few pixels at
+# the edge, which the frame covers.
+BOARD_CELL_FROM = '''            cellWidth: (width) / 8
+            cellHeight: cellWidth'''
+
+BOARD_CELL_TO = '''            cellWidth: Math.floor(width / 8)
+            cellHeight: cellWidth'''
+
+
 # QtQuick 2 accepts a statement block as a property binding; QtQuick 1.1
 # wants an expression, so the block becomes an immediately-called
 # function. Only RoutinePanel does this, and the transform is anchored to
@@ -89,6 +115,22 @@ ROUTINE_FROM = '''    property variant shown: {
 ROUTINE_TO = '''    property variant shown: (function() {
         var out = []'''
 
+# The Harmattan components default to a light theme; Silica is dark, and
+# every colour in this QML comes from Silica's palette. Without inverting
+# it the pages are white text on a white ground. ApplicationWindow is also
+# deprecated in favour of PageStackWindow, which is what it warns about.
+ROOT_FROM = '''ApplicationWindow {
+    id: app
+'''
+
+ROOT_TO = '''PageStackWindow {
+    id: app
+
+    // Silica's palette is a dark one; the MeeGo components start light.
+    Component.onCompleted: theme.inverted = true
+'''
+
+
 
 
 def main(paths):
@@ -99,6 +141,11 @@ def main(paths):
         after = before
         for pattern, repl in SUBST:
             after = re.sub(pattern, repl, after, flags=re.M)
+        if path.endswith('harbour-schachlehrer.qml'):
+            if ROOT_FROM not in after:
+                sys.stderr.write('root qml: expected ApplicationWindow block\n')
+                raise SystemExit(1)
+            after = after.replace(ROOT_FROM, ROOT_TO)
         if path.endswith('RoutinePanel.qml'):
             if ROUTINE_FROM not in after:
                 sys.stderr.write('RoutinePanel.qml: expected block not found\n')
@@ -107,7 +154,8 @@ def main(paths):
             after = re.sub(r'(\n        return out\n)    \}', r'\1    })()',
                            after, count=1)
         if path.endswith('Board.qml'):
-            for src, dst in ((BOARD_FROM, BOARD_TO), (BOARD_AXES_FROM, BOARD_AXES_TO)):
+            for src, dst in ((BOARD_FROM, BOARD_TO), (BOARD_AXES_FROM, BOARD_AXES_TO),
+                             (BOARD_CELL_FROM, BOARD_CELL_TO)):
                 if src not in after:
                     sys.stderr.write('Board.qml: expected block not found, '
                                      'the source moved under the port\n')

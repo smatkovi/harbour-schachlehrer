@@ -45,7 +45,7 @@ Item {
 
     // A square is never narrower than 11 % of the screen width, so a piece is
     // never smaller than a finger (Style.minimumSquareFraction).
-    property real minimumSquare: Screen.width * Style.minimumSquareFraction
+    property real minimumSquare: AppTheme.screenWidth * Style.minimumSquareFraction
     property real minimumSide: minimumSquare * 8
 
     property bool interactive: true
@@ -191,7 +191,7 @@ Item {
             id: grid
             anchors.fill: parent
             anchors.margins: frame.border.width
-            cellWidth: (width) / 8
+            cellWidth: Math.floor(width / 8)
             cellHeight: cellWidth
             interactive: false
             clip: true

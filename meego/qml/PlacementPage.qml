@@ -29,7 +29,7 @@ import "."
 Page {
     id: page
     objectName: "placementPage"
-    orientationLock: PageOrientation.LockPortrait
+    orientationLock: PageOrientation.Automatic
 
     property bool started: false
 
@@ -122,7 +122,7 @@ Page {
             Board {
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: page.started
-                width: page.width - 2 * Style.paddingSmall
+                width: Math.min(page.width, page.height) - 2 * Style.paddingSmall
                 height: visible ? width : 0
                 interactive: page.started && !teacher.thinking && !teacher.reviewing
                 // No hint marks during a measurement: the legal-target dots

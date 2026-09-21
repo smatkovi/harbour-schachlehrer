@@ -24,8 +24,11 @@ import com.nokia.meego 1.0
 // src/main.cpp installs the one TeacherEngine instance as the root context
 // property `teacher` (docs/design.md §4); every page reads it from there
 // rather than passing it down the page stack.
-ApplicationWindow {
+PageStackWindow {
     id: app
+
+    // Silica's palette is a dark one; the MeeGo components start light.
+    Component.onCompleted: theme.inverted = true
 
     initialPage: Component { MainPage { } }
 }

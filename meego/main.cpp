@@ -148,11 +148,6 @@ int main(int argc, char* argv[])
     // Sailfish build finds the same files through SailfishApp::pathTo().
     const QString dataDirectory =
         QStandardPaths::writableLocation(QStandardPaths::DataLocation);
-    std::fprintf(stderr, "DIAG dataDirectory = '%s' org='%s' app='%s' home='%s'\n",
-                 qPrintable(dataDirectory),
-                 qPrintable(QCoreApplication::organizationName()),
-                 qPrintable(QCoreApplication::applicationName()),
-                 qPrintable(QDir::homePath()));
     QDir().mkpath(dataDirectory);
     engine.setPaths(root + QString::fromLatin1("/bin/stockfish"),
                     root + QString::fromLatin1("/syzygy"),

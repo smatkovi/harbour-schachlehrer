@@ -7,6 +7,7 @@ QtObject {
     // Qt.application.screens is QtQuick 2. Both Harmattan devices this runs
     // on are 480x854, so the reference width is simply that.
     property real screenWidth: 480
+    property real screenHeight: 854
     property real ratio: screenWidth / 540
 
     property real paddingSmall: 6 * ratio

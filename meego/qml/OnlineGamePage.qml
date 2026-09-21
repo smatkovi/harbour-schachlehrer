@@ -38,7 +38,7 @@ import "."
 Page {
     id: page
     objectName: "onlineGamePage"
-    orientationLock: PageOrientation.LockPortrait
+    orientationLock: PageOrientation.Automatic
 
     property variant game: teacher.onlineGame
     property variant clock: teacher.clocks
@@ -194,7 +194,7 @@ Page {
             Board {
                 id: board
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: page.width - 2 * Style.paddingSmall
+                width: Math.min(page.width, page.height) - 2 * Style.paddingSmall
                 height: width
                 // §3.5 step 5: the move goes to the server and the board waits
                 // for the next `gameState`. Tapping again in between does no
