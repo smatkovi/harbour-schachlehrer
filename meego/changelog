@@ -1,0 +1,6 @@
+harbour-schachlehrer (0.2.0) unstable; urgency=low
+
+  * First MeeGo Harmattan edition, for the Nokia N9 and N950.
+  * Stockfish 17.1 built for Harmattan, small NNUE net only.
+
+ -- Sebastian Matkovich <sebastian.matkovich@gmail.com>  Sun, 21 Sep 2026 10:00:00 +0200

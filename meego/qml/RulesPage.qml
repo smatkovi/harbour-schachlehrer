@@ -36,6 +36,7 @@ Page {
 
     Flickable {
         anchors.fill: parent
+        pressDelay: 150
         contentHeight: content.height + Style.paddingLarge
         VerticalScrollDecorator { }
 

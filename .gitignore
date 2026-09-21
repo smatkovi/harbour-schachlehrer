@@ -7,3 +7,4 @@ assets/syzygy/
 *.rpm
 *.user
 __pycache__/
+build/

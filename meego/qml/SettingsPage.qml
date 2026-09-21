@@ -40,6 +40,7 @@ Page {
 
     Flickable {
         anchors.fill: parent
+        pressDelay: 150
         contentHeight: content.height + Style.paddingLarge
         VerticalScrollDecorator { }
 
@@ -165,18 +166,13 @@ Page {
                 // teacher.md §5.2 is the reason this exists, and it is worth
                 // saying: a position that comes back measures whether you
                 // remember it, not whether you can do it.
-                text: qsTr("%1 Uebungsstellungen sind gerade in Gebrauch, %2 liegen geholt "
-                           "bereit. Eine Stellung, die wiederkommt, misst nur noch, ob du sie "
-                           "kennst — deshalb ist Nachschub etwas wert. Geholte kommen beim "
-                           "nächsten Start dazu, nicht mitten in einer Sitzung.")
+                text: qsTr("%1 Uebungsstellungen sind gerade in Gebrauch, %2 liegen geholt bereit. Eine Stellung, die wiederkommt, misst nur noch, ob du sie kennst - deshalb ist Nachschub etwas wert. Geholte kommen beim naechsten Start dazu, nicht mitten in einer Sitzung.")
                       .arg(teacher.itemCount).arg(teacher.feedCount)
             }
 
             TextSwitch {
                 text: qsTr("Neue Aufgaben von Lichess holen")
-                description: qsTr("Beim Start, wenn eine Verbindung da ist. Ohne das laeuft alles "
-                                  "weiter — die App bringt ihre Aufgaben mit und braucht dafür "
-                                  "weder Netz noch Konto.")
+                description: qsTr("Beim Start, wenn eine Verbindung da ist. Ohne das laeuft alles weiter - die App bringt ihre Aufgaben mit und braucht dafuer weder Netz noch Konto.")
                 checked: teacher.feedAllowed
                 onClicked: teacher.feedAllowed = !teacher.feedAllowed
             }
@@ -191,7 +187,7 @@ Page {
                 value: teacher.feedTarget
                 label: qsTr("Hoechstens %1 geholte Aufgaben").arg(Math.round(value))
                 valueText: Math.round(value)
-                onReleased: teacher.feedTarget = Math.round(value)
+                onPressedChanged: if (!pressed) teacher.feedTarget = Math.round(value)
             }
 
             Label {
@@ -233,10 +229,7 @@ Page {
                 // The honest version of where they come from, and of what the
                 // app does *not* do: the 304 MB database export stays on the
                 // build host, and the phone asks for fifty at a time.
-                text: qsTr("Geholt wird ueber die offene Lichess-Schnittstelle, fuenfzig Stueck je "
-                           "Anfrage und ohne Konto. Die vollständige Aufgabendatenbank ist 304 MB "
-                           "groß und wird nie auf das Telefon geladen; was die App mitbringt, ist "
-                           "eine daraus gebaute Auswahl.")
+                text: qsTr("Geholt wird ueber die offene Lichess-Schnittstelle, fuenfzig Stueck je Anfrage und ohne Konto. Die vollstaendige Aufgabendatenbank ist 304 MB gross und wird nie auf das Telefon geladen; was die App mitbringt, ist eine daraus gebaute Auswahl.")
             }
 
             SectionHeader { text: qsTr("Lichess") }

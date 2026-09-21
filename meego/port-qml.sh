@@ -44,6 +44,9 @@ done
 # Silica page properties com.nokia.meego spells differently.
 python3 meego/fix-silica.py "$OUT"/*.qml
 
+# Qt 4.7's QML parser has no adjacent string literals.
+python3 meego/join-strings.py "$OUT"/*.qml "$OUT"/context/*.qml
+
 python3 meego/ascii-qstr.py qml "$OUT"/*.qml "$OUT"/context/*.qml
 
 # The app's source language is German, and Qt 4.7 loses an umlaut in a qsTr

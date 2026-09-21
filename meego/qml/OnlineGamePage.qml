@@ -49,6 +49,7 @@ Page {
     // dropped while nothing was drawing (§3.5).
     Connections {
         target: Qt.application
+        ignoreUnknownSignals: true
         onStateChanged: {
             if (Qt.application.state === Qt.ApplicationActive)
                 teacher.appActivated()
@@ -57,6 +58,7 @@ Page {
 
     Flickable {
         anchors.fill: parent
+        pressDelay: 150
         contentHeight: content.height + Style.paddingLarge
         VerticalScrollDecorator { }
 

@@ -73,6 +73,13 @@ Item {
     function squareOfCell(cell) {
         var row = Math.floor(cell / 8)          // 0 at the top
         var col = cell % 8
+        // QtQuick 1.1 has no verticalLayoutDirection, so the turn of the
+        // board happens here instead of by reversing the view's axes. The
+        // square that lands on a given screen cell is the same either way.
+        if (flipped) {
+            row = 7 - row
+            col = 7 - col
+        }
         return (7 - row) * 8 + col
     }
 
@@ -190,11 +197,7 @@ Item {
             clip: true
             model: cells
 
-            // The whole turn of the board: both axes reversed, which is a
-            // 180-degree rotation of the layout without rotating the pieces.
-            layoutDirection: board.flipped ? Qt.RightToLeft : Qt.LeftToRight
-            verticalLayoutDirection: board.flipped ? GridView.BottomToTop
-                                                   : GridView.TopToBottom
+            // The turn is done in squareOfCell() above.
 
             delegate: Item {
                 id: cellItem

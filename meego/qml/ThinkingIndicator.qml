@@ -35,7 +35,8 @@ Row {
 
     BusyIndicator {
         id: spinner
-        size: BusyIndicatorSize.Small
+        width: AppTheme.itemSizeSmall
+        height: AppTheme.itemSizeSmall
         running: indicator.visible
         anchors.verticalCenter: parent.verticalCenter
     }

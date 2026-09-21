@@ -1,0 +1,20 @@
+Package: harbour-schachlehrer
+Version: @VERSION@
+Section: user/games
+Priority: optional
+Architecture: armel
+Depends: libqt4-declarative (>= 4.7.4), libqt4-script (>= 4.7.4), libqt4-gui (>= 4.7.4), libqt4-sql (>= 4.7.4), libqt4-sql-sqlite, qt-components
+Maintainer: Sebastian Matkovich <sebastian.matkovich@gmail.com>
+Homepage: https://github.com/smatkovi/harbour-schachlehrer
+Description: Schach lernen auf dem N9: messen, spielen, diagnostizieren, ueben
+ Ein Schachlehrer, der die eigenen Schwaechen misst und daraus ein taegliches
+ Pensum baut: faellige Wiederholungen, ein neues Muster, dann eine Partie
+ gegen die Maschine mit Ruecknahme und Erklaerung.
+ .
+ Bringt Stockfish 17.1 mit, fuer Harmattan uebersetzt und auf das kleine
+ NNUE-Netz beschraenkt, damit es in rund 50 MB Arbeitsspeicher passt.
+ .
+ MeeGo-Harmattan-Fassung der Sailfish-OS-App.
+Maemo-Display-Name: Schachlehrer
+XB-Maemo-Icon-26:
+@ICON@

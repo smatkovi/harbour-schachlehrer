@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Schachlehrer
+Comment=Schach lernen: messen, spielen, diagnostizieren, üben
+Icon=harbour-schachlehrer
+Exec=/opt/harbour-schachlehrer/bin/harbour-schachlehrer
+Type=Application
+Categories=Game;
+X-MeeGo-Logical-Id=harbour-schachlehrer

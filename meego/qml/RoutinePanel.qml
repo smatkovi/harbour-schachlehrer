@@ -38,7 +38,7 @@ Item {
 
     // Only the ones that have not retired (§7.5: the scaffolding disappears as
     // it is internalised). `visible` comes from the engine, not from here.
-    property variant shown: {
+    property variant shown: (function() {
         var out = []
         var list = panel.questions
         if (!list)
@@ -48,7 +48,7 @@ Item {
                 out.push(list[i])
         }
         return out
-    }
+    })()
     property int count: shown.length
 
     width: parent ? parent.width : 0
@@ -73,7 +73,7 @@ Item {
                 text: qsTr("Was frage ich mich?")
                 color: header.highlighted ? Style.highlightColor : Style.primaryColor
                 font.pixelSize: Style.fontSizeSmall
-                truncationMode: TruncationMode.Fade
+                elide: Text.ElideRight
             }
 
             Image {

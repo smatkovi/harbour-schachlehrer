@@ -4,9 +4,12 @@ Item {
     id: root
     property bool highlighted: area.pressed
     property bool down: area.pressed
+    // Silica's ListItem takes its height from contentHeight; the default is
+    // the standard row height.
+    property real contentHeight: AppTheme.itemSizeSmall
     signal clicked()
     width: parent ? parent.width : 0
-    height: AppTheme.itemSizeSmall
+    height: contentHeight
     Rectangle {
         anchors.fill: parent
         color: AppTheme.highlightColor

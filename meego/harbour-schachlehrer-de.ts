@@ -426,12 +426,12 @@
         <translation>Stockfish läuft als eigenes Programm neben der App und wird über UCI angesprochen. Die Endspieldatenbanken für drei und vier Steine sind im Paket enthalten; es wird nichts nachgeladen.</translation>
     </message>
     <message>
-        <source>%1 Uebungsstellungen sind gerade in Gebrauch, %2 liegen geholt </source>
-        <translation>%1 Übungsstellungen sind gerade in Gebrauch, %2 liegen geholt </translation>
+        <source>%1 Uebungsstellungen sind gerade in Gebrauch, %2 liegen geholt bereit. Eine Stellung, die wiederkommt, misst nur noch, ob du sie kennst - deshalb ist Nachschub etwas wert. Geholte kommen beim naechsten Start dazu, nicht mitten in einer Sitzung.</source>
+        <translation>%1 Übungsstellungen sind gerade in Gebrauch, %2 liegen geholt bereit. Eine Stellung, die wiederkommt, misst nur noch, ob du sie kennst - deshalb ist Nachschub etwas wert. Geholte kommen beim nächsten Start dazu, nicht mitten in einer Sitzung.</translation>
     </message>
     <message>
-        <source>Beim Start, wenn eine Verbindung da ist. Ohne das laeuft alles </source>
-        <translation>Beim Start, wenn eine Verbindung da ist. Ohne das läuft alles </translation>
+        <source>Beim Start, wenn eine Verbindung da ist. Ohne das laeuft alles weiter - die App bringt ihre Aufgaben mit und braucht dafuer weder Netz noch Konto.</source>
+        <translation>Beim Start, wenn eine Verbindung da ist. Ohne das läuft alles weiter - die App bringt ihre Aufgaben mit und braucht dafür weder Netz noch Konto.</translation>
     </message>
     <message>
         <source>Hoechstens %1 geholte Aufgaben</source>
@@ -446,8 +446,8 @@
         <translation>Löschen</translation>
     </message>
     <message>
-        <source>Geholt wird ueber die offene Lichess-Schnittstelle, fuenfzig Stueck je </source>
-        <translation>Geholt wird über die offene Lichess-Schnittstelle, fünfzig Stück je </translation>
+        <source>Geholt wird ueber die offene Lichess-Schnittstelle, fuenfzig Stueck je Anfrage und ohne Konto. Die vollstaendige Aufgabendatenbank ist 304 MB gross und wird nie auf das Telefon geladen; was die App mitbringt, ist eine daraus gebaute Auswahl.</source>
+        <translation>Geholt wird über die offene Lichess-Schnittstelle, fünfzig Stück je Anfrage und ohne Konto. Die vollständige Aufgabendatenbank ist 304 MB groß und wird nie auf das Telefon geladen; was die App mitbringt, ist eine daraus gebaute Auswahl.</translation>
     </message>
     <message>
         <source>Der Zugangsschluessel liegt %1 - nicht in den Einstellungen und nicht im Klartext irgendwo sonst. Beim Abmelden wird er geloescht und bei Lichess widerrufen.</source>
