@@ -1,8 +1,10 @@
 [Desktop Entry]
+Encoding=UTF-8
+Version=1.0
+Type=Application
 Name=Schachlehrer
 Comment=Schach lernen: messen, spielen, diagnostizieren, üben
-Icon=harbour-schachlehrer
+Icon=/usr/share/themes/base/meegotouch/icons/harbour-schachlehrer-80.png
 Exec=/opt/harbour-schachlehrer/bin/harbour-schachlehrer
-Type=Application
 Categories=Game;
-X-MeeGo-Logical-Id=harbour-schachlehrer
+X-Osso-Type=application/x-executable
