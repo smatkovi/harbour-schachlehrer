@@ -51,6 +51,10 @@ cp -a "$OUT/arm/translations" "$STAGE/opt/harbour-schachlehrer/translations"
 cp "$HERE/sailfish/icons/icon-256.png" "$STAGE/opt/harbour-schachlehrer/icons/icon-256.png"
 
 # --- icons: 80x80 for the launcher, 64x64 base64 for the package manager ---
+# The launcher looks in hicolor, not in the meegotouch theme: every
+# working third-party app on the device puts its icon here.
+mkdir -p "$STAGE/usr/share/icons/hicolor/80x80/apps"
+magick "$HERE/sailfish/icons/icon-256.png" -resize 80x80 "$STAGE/usr/share/icons/hicolor/80x80/apps/harbour-schachlehrer.png"
 magick "$HERE/sailfish/icons/icon-256.png" -resize 80x80 "$STAGE/usr/share/themes/base/meegotouch/icons/harbour-schachlehrer-80.png"
 magick "$HERE/sailfish/icons/icon-256.png" -resize 64x64 "$OUT/icon-64.png"
 
