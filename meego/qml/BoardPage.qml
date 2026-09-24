@@ -106,8 +106,12 @@ Page {
                 height: width
                 // A Lichess game is played on OnlineGamePage, with its clocks
                 // and its rules; this board does not take moves for it.
+                // Eine schon beantwortete Aufgabe nimmt keinen Zug mehr an:
+                // sonst tippt man auf dem Brett herum, auf dem man gerade
+                // gescheitert ist, und nichts davon zaehlt.
                 interactive: teacher.gameResult === "" && !teacher.thinking
                              && !page.checking && !teacher.liveGame
+                             && !teacher.awaitingNext
 
                 onMoveRejected: {
                     // A refused move is not an error message; it is simply not
@@ -137,17 +141,37 @@ Page {
                 width: parent.width
             }
 
-            Button {
+            Row {
                 anchors.horizontalCenter: parent.horizontalCenter
-                visible: page.drill && !solution.active
-                text: qsTr("Loesung ansehen")
-                // §6.6 Hilfestufe 4. Sie kostet die Aufgabe, und das steht auf
-                // dem Knopf und nicht im Kleingedruckten: nach der Lösung gibt
-                // es nichts mehr zu finden, also wird sie als nicht gelöst
-                // gewertet und kommt bald wieder.
-                onClicked: solutionRemorse.execute(
-                               qsTr("Zeigen - die Aufgabe gilt dann als nicht geloest"),
-                               function () { teacher.showSolution() })
+                spacing: Style.paddingMedium
+                visible: page.drill && (!solution.active || teacher.awaitingNext)
+
+                Button {
+                    visible: !solution.active
+                    text: qsTr("Loesung ansehen")
+                    // §6.6 Hilfestufe 4. Bei einer **offenen** Aufgabe kostet
+                    // sie die Aufgabe, und das steht auf dem Knopf und nicht im
+                    // Kleingedruckten. War die Aufgabe dagegen schon falsch
+                    // beantwortet, ist nichts mehr zu verlieren — dann wäre die
+                    // Rückfrage eine Unwahrheit, und es wird gleich gezeigt.
+                    onClicked: {
+                        if (teacher.awaitingNext)
+                            teacher.showSolution()
+                        else
+                            solutionRemorse.execute(
+                                qsTr("Zeigen - die Aufgabe gilt dann als nicht geloest"),
+                                function () { teacher.showSolution() })
+                    }
+                }
+
+                Button {
+                    // Nach einer falschen Antwort bleibt die Aufgabe stehen,
+                    // bis der Lernende weitergeht — vorher lud die nächste
+                    // sofort nach und die verlorene war nicht mehr zu sehen.
+                    visible: teacher.awaitingNext
+                    text: qsTr("Weiter")
+                    onClicked: teacher.continueDrill()
+                }
             }
 
             RemorsePopup { id: solutionRemorse }
@@ -180,9 +204,11 @@ Page {
                     text: qsTr("Hinweis")
                     // A hint during a rated Lichess game is exactly the
                     // "move recommendation from software" the fair-play rules
-                    // forbid (§3.7), so it disappears with the engine.
+                    // forbid (§3.7), so it disappears with the engine. Und
+                    // eine schon beantwortete Aufgabe braucht keinen mehr.
                     visible: !teacher.liveGame
                     enabled: teacher.engineReady && !teacher.thinking
+                             && !teacher.awaitingNext
                     onClicked: teacher.requestHint()
                 }
             }

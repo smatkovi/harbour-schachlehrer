@@ -193,6 +193,10 @@ int main(int argc, char* argv[])
     if (!shotDir.isEmpty())
         new ScreenshotTimer(&view, QString::fromLocal8Bit(shotDir));
 
+    // Der Stand einer laufenden Sparringpartie wird nach jedem Zug
+    // weggeschrieben; das hier ist der Nachschlag fuer den geordneten Abgang.
+    QObject::connect(&app, SIGNAL(aboutToQuit()), &engine, SLOT(saveState()));
+
     if (qgetenv("SCHACH_WINDOWED").isEmpty()) {
         view.showFullScreen();
     } else {

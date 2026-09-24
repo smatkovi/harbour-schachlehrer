@@ -84,6 +84,11 @@ int main(int argc, char *argv[])
     teacher->setThemesPath(
         SailfishApp::pathTo(QStringLiteral("items/themes.json")).toLocalFile());
     view->rootContext()->setContextProperty(QStringLiteral("teacher"), teacher);
+    // Der Stand einer laufenden Sparringpartie wird nach jedem Zug
+    // weggeschrieben; das hier ist der Nachschlag fuer den geordneten Abgang
+    // (Brett gedreht, Zug zurueckgenommen und sofort zugemacht).
+    QObject::connect(app, &QGuiApplication::aboutToQuit,
+                     teacher, &schach::TeacherEngine::saveState);
 
     view->setSource(SailfishApp::pathTo(QStringLiteral("qml/harbour-schachlehrer.qml")));
     view->show();

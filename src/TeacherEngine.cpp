@@ -98,6 +98,12 @@ TeacherEngine::TeacherEngine(QObject* parent)
     , m_analysisDone(0)
     , m_analysisTotal(0)
     , m_hintLevel(0)
+    , m_awaitingNext(false)
+    , m_resuming(false)
+    , m_handicap(0)
+    , m_savedHandicap(0)
+    , m_savedLearnerIsWhite(true)
+    , m_savedFlipped(false)
     , m_learnerIsWhite(true)
     , m_flipped(false)
     , m_selected(-1)
@@ -193,6 +199,7 @@ void TeacherEngine::setPaths(const QString& enginePath, const QString& syzygyPat
         m_measuredAt = m_database->lastMeasuredAt();
     }
     reloadHistory();
+    loadSavedGame();
     // A missing engine is a normal state: the board, the repetitions and the
     // rules work without it, only sparring and analysis do not (§5).
     if (!m_engine->start())
@@ -591,6 +598,7 @@ void TeacherEngine::playInSparring(const std::string& uci)
 
     m_sparring->noteMovePlayed();
     m_sparring->noteLearnerMove(m_position);   // §7.4 fires through chanceMissed()
+    saveState();
     if (!m_position.gameOver())
         askOpponent();
     else
@@ -874,6 +882,7 @@ void TeacherEngine::startSparring(int handicap)
 {
     if (refusedWhileLive())
         return;
+    m_handicap = handicap;
     m_learnerIsWhite = (handicap % 2) == 0;
     startNewGame(m_learnerIsWhite);
     setMode(Sparring);
@@ -902,7 +911,130 @@ void TeacherEngine::startSparring(int handicap)
     emit routineChanged();
     setPrompt(tr("Spiel deine Partie. Ich sage dir hinterher, was wichtig war."));
     clearFeedback();
+    // Beim Fortsetzen kommen erst die gespielten Zuege aufs Brett; wer dann am
+    // Zug ist, entscheidet resumeGame().
+    if (m_resuming)
+        return;
+    // Eine neue Partie loescht die gespeicherte: es gibt nur eine.
+    saveState();
     if (!m_learnerIsWhite)
+        askOpponent();
+}
+
+// --- die unterbrochene Partie -------------------------------------------------
+//
+// Eine Sparringpartie ist Arbeit: zwanzig Zuege sind zwanzig Entscheidungen,
+// und die App wird auf dem Telefon staendig weggewischt. Bisher war die Partie
+// damit weg. Sie wird deshalb nach **jedem** Zug weggeschrieben und nicht erst
+// beim Beenden -- ein Programm, das der Taskmanager abschiesst, bekommt kein
+// aboutToQuit mehr zu sehen.
+//
+// Gespeichert wird die Zugfolge, nicht die Stellung: aus den Zuegen laesst
+// sich die Stellung herstellen, umgekehrt nicht, und Zuruecknehmen und
+// Auswerten brauchen die Geschichte.
+
+void TeacherEngine::loadSavedGame()
+{
+    QSettings settings;
+    settings.beginGroup(QStringLiteral("partie"));
+    m_savedMoves = settings.value(QStringLiteral("zuege")).toString();
+    m_savedHandicap = settings.value(QStringLiteral("vorgabe"), 0).toInt();
+    m_savedLearnerIsWhite = settings.value(QStringLiteral("lernerWeiss"), true).toBool();
+    m_savedFlipped = settings.value(QStringLiteral("gedreht"), false).toBool();
+    settings.endGroup();
+}
+
+void TeacherEngine::saveState()
+{
+    // Nur eine laufende Sparringpartie. Eine beendete ist ausgewertet und
+    // gehoert in die Datenbank, keine in eine Fortsetzung; eine Lichess-Partie
+    // liegt ohnehin auf dem Server und wird von dort geholt (§3.5).
+    const bool worthKeeping = m_mode == Sparring && m_liveGameId.isEmpty()
+            && !m_position.history().empty() && !m_position.gameOver();
+    QStringList moves;
+    if (worthKeeping) {
+        const std::vector<std::string>& history = m_position.history();
+        for (std::size_t i = 0; i < history.size(); ++i)
+            moves << QString::fromStdString(history[i]);
+    }
+    const QString joined = moves.join(QStringLiteral(" "));
+    if (joined == m_savedMoves && (!worthKeeping || m_savedFlipped == m_flipped))
+        return;
+
+    QSettings settings;
+    settings.beginGroup(QStringLiteral("partie"));
+    if (!worthKeeping) {
+        settings.remove(QString());
+    } else {
+        settings.setValue(QStringLiteral("zuege"), joined);
+        settings.setValue(QStringLiteral("vorgabe"), m_handicap);
+        settings.setValue(QStringLiteral("lernerWeiss"), m_learnerIsWhite);
+        settings.setValue(QStringLiteral("gedreht"), m_flipped);
+    }
+    settings.endGroup();
+    // Ohne sync() steht die Datei erst da, wenn QSettings aufgeraeumt wird --
+    // und genau das passiert beim Abschiessen nicht mehr.
+    settings.sync();
+
+    m_savedMoves = joined;
+    m_savedHandicap = m_handicap;
+    m_savedLearnerIsWhite = m_learnerIsWhite;
+    m_savedFlipped = m_flipped;
+    emit progressChanged();
+}
+
+void TeacherEngine::discardSavedGame()
+{
+    QSettings settings;
+    settings.beginGroup(QStringLiteral("partie"));
+    settings.remove(QString());
+    settings.endGroup();
+    settings.sync();
+    m_savedMoves.clear();
+    emit progressChanged();
+}
+
+void TeacherEngine::resumeGame()
+{
+    if (refusedWhileLive())
+        return;
+    const QStringList moves = splitUci(m_savedMoves);
+    if (moves.isEmpty())
+        return;
+    const int handicap = m_savedHandicap;
+    const bool learnerIsWhite = m_savedLearnerIsWhite;
+    const bool flipped = m_savedFlipped;
+
+    m_resuming = true;
+    startSparring(handicap);
+    m_resuming = false;
+
+    // Der Fehlerhaushalt des Gegners (§7.2) faengt dabei von vorn an: was er
+    // in der ersten Haelfte schon verschenkt hat, weiss nach dem Neustart
+    // niemand mehr. Das ist die ehrliche Auskunft und nicht zu heilen, ohne
+    // den ganzen Haushalt mitzuschreiben.
+    int played = 0;
+    for (int i = 0; i < moves.size(); ++i) {
+        if (!m_position.play(moves.at(i).toStdString()))
+            break;
+        ++played;
+    }
+    m_learnerIsWhite = learnerIsWhite;
+    m_flipped = flipped;
+    m_selected = -1;
+    emit positionChanged();
+    emit selectionChanged();
+    emit boardChanged();
+
+    if (played < moves.size()) {
+        // Sollte nicht vorkommen -- aber lieber eine kuerzere Partie mit einer
+        // Ansage als eine stumm abgeschnittene.
+        setFeedback(tr("Die Partie liess sich nur bis zum %1. Halbzug herstellen. "
+                       "Von da an spielen wir weiter.").arg(played),
+                    QStringLiteral("resume"));
+    }
+    setPrompt(tr("Weiter, wo du aufgehoert hast."));
+    if (!m_position.gameOver() && m_position.whiteToMove() != m_learnerIsWhite)
         askOpponent();
 }
 
@@ -925,8 +1057,10 @@ void TeacherEngine::startNewGame(bool learnerPlaysWhite)
 
 bool TeacherEngine::play(int fromSquare, int toSquare, const QString& promotion)
 {
-    // Looking at a solved item is reading, not playing.
-    if (m_reviewIndex >= 0 || m_position.gameOver())
+    // Looking at a solved item is reading, not playing. Dasselbe gilt fuer
+    // eine schon beantwortete Aufgabe, die nur noch auf "Weiter" wartet:
+    // sonst wuerde derselbe Zug ein zweites Mal bewertet.
+    if (m_reviewIndex >= 0 || m_awaitingNext || m_position.gameOver())
         return false;
     std::string uci = core::squareName(fromSquare) + core::squareName(toSquare);
     if (m_position.needsPromotion(fromSquare, toSquare)) {
@@ -1070,6 +1204,9 @@ void TeacherEngine::onEngineResult(const EngineResult& result)
     if (chosen.isEmpty() || !m_position.play(chosen.toStdString()))
         return;
     emit positionChanged();
+    // Auch die Antwort des Gegners gehoert in die Sicherung, sonst faengt die
+    // fortgesetzte Partie einen Halbzug zu frueh an.
+    saveState();
     if (m_position.gameOver())
         analyseCurrentGame();
 }
@@ -1083,6 +1220,10 @@ void TeacherEngine::onEngineFailed(const QString& reason)
 
 void TeacherEngine::takeBack()
 {
+    // Eine beantwortete Aufgabe wird nicht zurueckgenommen; ihr Zug gehoert
+    // zur Antwort und steht so im Protokoll.
+    if (m_awaitingNext)
+        return;
     // A move the drill is holding was never played; letting it go is the
     // take-back (§7.6: taking back is free and costs nothing).
     if (!m_heldMove.isEmpty()) {
@@ -1110,6 +1251,7 @@ void TeacherEngine::takeBack()
         m_position.undo();   // the opponent's reply as well
         setFeedback(tr("Zurückgenommen. Ich merke es mir trotzdem — sonst kann ich dir nicht helfen."),
                     QStringLiteral("takeback"));
+        saveState();
     }
     m_selected = -1;
     emit positionChanged();
@@ -1123,6 +1265,9 @@ void TeacherEngine::requestHint()
     // when it comes from our own pocket. The door is closed here too, and it
     // says why.
     if (refusedWhileLive())
+        return;
+    // Die Aufgabe ist vorbei -- ein Hinweis darauf waere keiner mehr.
+    if (m_awaitingNext)
         return;
     if (m_mode == Placement) {
         // §4.1: the placement test measures what you see unaided. A hint here
@@ -1188,6 +1333,11 @@ void TeacherEngine::skipTask()
         return;
     }
     if (m_mode == Drill) {
+        // Wartet die Aufgabe nur noch auf "Weiter", ist sie schon gezaehlt.
+        if (m_awaitingNext) {
+            continueDrill();
+            return;
+        }
         ++m_sessionIndex;
         m_hintLevel = 0;
         loadNextTask();
@@ -1197,6 +1347,7 @@ void TeacherEngine::skipTask()
 void TeacherEngine::loadNextTask()
 {
     m_hintLevel = 0;
+    m_awaitingNext = false;
     m_solutionUci.clear();
     m_currentCardId.clear();
     m_task.clear();
@@ -1444,7 +1595,10 @@ void TeacherEngine::showSolution()
     // test that is the same cost as skipping (§4.1 measures what the learner
     // sees unaided); in the drill it is hint level 4 of §6.6, after which
     // there is nothing left to produce.
-    const bool taskOpen = m_reviewIndex < 0 && !m_task.isEmpty()
+    // `m_awaitingNext` heisst: die Aufgabe ist schon beantwortet und war
+    // falsch. Sie ist nicht mehr offen, es gibt nichts mehr zu verlieren --
+    // und genau ihre Loesung ist gemeint.
+    const bool taskOpen = m_reviewIndex < 0 && !m_task.isEmpty() && !m_awaitingNext
             && (m_mode == Drill || m_mode == Placement);
     if (taskOpen) {
         const int milliseconds = m_taskClock.isValid()
@@ -1477,6 +1631,10 @@ void TeacherEngine::hideSolution()
     m_showStep = -1;
     m_showLine.clear();
     endReview();
+    // Die Loesung der verlorenen Aufgabe war das Letzte, was es an ihr zu
+    // sehen gab: "Weiter ueben" heisst dann die naechste Aufgabe.
+    if (m_awaitingNext)
+        continueDrill();
 }
 
 void TeacherEngine::showAnswered(int index)
@@ -1785,7 +1943,36 @@ void TeacherEngine::finishDrillTask(bool correct, int milliseconds)
     setFeedback(sentence, QStringLiteral("drill"));
     ++m_sessionIndex;
     emit progressChanged();
+    if (!correct && m_mode == Drill) {
+        // Die falsch beantwortete Aufgabe bleibt stehen. Vorher lud sie sofort
+        // die naechste nach, und "Loesung ansehen" griff damit die frische
+        // Aufgabe: die wurde als ungeloest gewertet und *ihre* Loesung
+        // gezeigt -- nie die der Aufgabe, an der der Lernende gerade
+        // gescheitert war. Falsch beantwortet und dann nicht sehen duerfen,
+        // warum, ist die eine Stelle, an der eine Uebung nichts beibringt.
+        m_awaitingNext = true;
+        emit taskChanged();
+        return;
+    }
     loadNextTask();
+}
+
+void TeacherEngine::continueDrill()
+{
+    if (!m_awaitingNext)
+        return;
+    if (m_reviewIndex >= 0)
+        endReview();
+    m_showStep = -1;
+    m_showLine.clear();
+    m_awaitingNext = false;
+    clearFeedback();
+    emit reviewChanged();
+    loadNextTask();
+    // Ist die Sitzung zu Ende, laedt loadNextTask() nichts mehr nach und
+    // meldet nur progressChanged -- ohne das hier bliebe `awaitingNext` in
+    // der Oberflaeche stehen und das Brett taub.
+    emit taskChanged();
 }
 
 void TeacherEngine::analyseCurrentGame()

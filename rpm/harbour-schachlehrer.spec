@@ -1,5 +1,5 @@
 Name:    harbour-schachlehrer
-Version: 0.2.0
+Version: 0.2.1
 Release: 1
 Summary: Chess coach for Sailfish OS: measure, play, diagnose, drill
 License: GPL-3.0-or-later
@@ -208,6 +208,17 @@ exit 0
 %{_datadir}/licenses/%{name}
 
 %changelog
+* Wed Sep 24 2026 smatkovi - 0.2.1-1
+- Die Sparringpartie überlebt das Schließen der App. Sie wird nach jedem Zug
+  weggeschrieben und nicht erst beim Beenden — ein Programm, das der
+  Taskmanager abschießt, bekommt kein aboutToQuit mehr zu sehen. Auf der
+  Startseite steht dann "Partie fortsetzen"; der zweite Knopf heißt so lange
+  "Neue Partie", damit niemand die alte aus Versehen wegwirft.
+- Beim Üben bleibt eine falsch beantwortete Aufgabe stehen, bis man weitergeht.
+  Bisher lud sofort die nächste, und "Lösung ansehen" zeigte deren Lösung — die
+  Aufgabe, an der man gerade gescheitert war, war nicht mehr zu sehen, und die
+  frische wurde nebenbei als ungelöst verbucht. Jetzt ist die Lösung die der
+  verlorenen Aufgabe, sie kostet nichts mehr, und danach geht es mit "Weiter".
 * Fri Sep 18 2026 smatkovi - 0.2.0-1
 - Aufgaben gehen über einen Zug hinaus: die ganze Folge wird eingegeben,
   die Gegnerzüge eingeschlossen. Nur die erste Begegnung mit einem Muster

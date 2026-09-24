@@ -159,6 +159,16 @@ class TeacherEngine : public QObject
     // plays the line back; §6.6 hint level 4: the full solution with a
     // sentence). Empty `active` means nothing is being shown.
     Q_PROPERTY(QVariantMap solutionView READ solutionView NOTIFY reviewChanged)
+    // Eine falsch beantwortete Uebungsaufgabe bleibt stehen, bis der Lernende
+    // weitergeht. Solange das so ist, meint "Loesung ansehen" **diese**
+    // Aufgabe und nicht die naechste, und das Brett nimmt keinen Zug mehr an.
+    Q_PROPERTY(bool awaitingNext READ awaitingNext NOTIFY taskChanged)
+
+    // --- die unterbrochene Partie -------------------------------------------
+    // Eine Sparringpartie ueberlebt das Schliessen der App: sie wird nach
+    // jedem Zug weggeschrieben und kann beim naechsten Start fortgesetzt
+    // werden.
+    Q_PROPERTY(bool canResume READ canResume NOTIFY progressChanged)
 
 public:
     enum Mode { Idle = 0, Placement = 1, Drill = 2, Sparring = 3, Review = 4, Online = 5 };
@@ -195,6 +205,8 @@ public:
     int reviewCount() const { return m_answered.size(); }
     QVariantMap review() const;
     QVariantMap solutionView() const;
+    bool awaitingNext() const { return m_awaitingNext; }
+    bool canResume() const { return !m_savedMoves.trimmed().isEmpty(); }
     void setSelectedSquare(int square);
     bool flipped() const { return m_flipped; }
     void setFlipped(bool flipped);
@@ -267,6 +279,11 @@ public:
     Q_INVOKABLE bool undoEntry();
     Q_INVOKABLE void startSession();
     Q_INVOKABLE void startSparring(int handicap);
+    // Die gespeicherte Partie wieder aufs Brett holen, und sie vergessen.
+    Q_INVOKABLE void resumeGame();
+    Q_INVOKABLE void discardSavedGame();
+    // Nach einer falsch beantworteten Aufgabe zur naechsten weitergehen.
+    Q_INVOKABLE void continueDrill();
     Q_INVOKABLE bool play(int fromSquare, int toSquare, const QString& promotion = QString());
     Q_INVOKABLE void takeBack();
     Q_INVOKABLE void requestHint();
@@ -342,6 +359,16 @@ public:
     // The item bank draws at random now (ItemBank::pick), which is the point —
     // but a test that cannot repeat a draw cannot check anything.
     void seedItemBankForTest(unsigned int seed) { m_items.setSeed(seed); }
+
+public slots:
+    // Den Stand wegschreiben. Wird nach jedem Zug gerufen und zusaetzlich,
+    // wenn die Anwendung zumacht -- ein Programm, das abgeschossen wird,
+    // bekommt kein aboutToQuit mehr zu sehen.
+    //
+    // Ein echter Schlitz und kein Q_INVOKABLE: die MeeGo-Fassung haengt ihn
+    // unter Qt 4 mit der Zeichenketten-Schreibweise an aboutToQuit, und
+    // SLOT() findet nur Schlitze.
+    void saveState();
 
 signals:
     void positionChanged();
@@ -490,6 +517,21 @@ private:
     QString m_solutionUci;
     QString m_currentCardId;
     int m_hintLevel;
+    // Die Aufgabe ist beantwortet und falsch, die naechste ist noch nicht
+    // geladen. Frueher lud finishDrillTask() sofort nach, und "Loesung
+    // ansehen" traf dadurch die frische Aufgabe statt der eben verlorenen.
+    bool m_awaitingNext;
+    // Die Partie wird gerade wiederhergestellt: startSparring() darf den
+    // Gegner dann nicht schon ziehen lassen, die Zuege kommen erst noch.
+    bool m_resuming;
+    // Womit das Sparring begonnen wurde, damit es genauso fortgesetzt wird.
+    int m_handicap;
+    // Der gespeicherte Stand, beim Start einmal gelesen.
+    QString m_savedMoves;
+    int m_savedHandicap;
+    bool m_savedLearnerIsWhite;
+    bool m_savedFlipped;
+    void loadSavedGame();
     bool m_learnerIsWhite;
     bool m_flipped;
     int m_selected;

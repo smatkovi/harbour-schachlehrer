@@ -1,3 +1,20 @@
+harbour-schachlehrer (0.2.5) unstable; urgency=low
+
+  * Die Sparringpartie überlebt das Schließen der App: sie wird nach jedem Zug
+    weggeschrieben, und auf der Startseite steht "Partie fortsetzen".
+  * Beim Üben bleibt eine falsch beantwortete Aufgabe stehen, bis man
+    weitergeht — "Lösung ansehen" zeigt jetzt ihre Lösung und nicht mehr die
+    der schon nachgeladenen nächsten Aufgabe.
+
+ -- Sebastian Matkovich <sebastian.matkovich@gmail.com>  Wed, 24 Sep 2026 12:00:00 +0200
+
+harbour-schachlehrer (0.2.4) unstable; urgency=low
+
+  * Launcher icon cut to the exact squircle of the stock Harmattan apps,
+    so it sits flush in the home screen grid.
+
+ -- Sebastian Matkovich <sebastian.matkovich@gmail.com>  Mon, 21 Sep 2026 20:30:00 +0200
+
 harbour-schachlehrer (0.2.0) unstable; urgency=low
 
   * First MeeGo Harmattan edition, for the Nokia N9 and N950.

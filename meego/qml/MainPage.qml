@@ -165,10 +165,24 @@ Page {
                 }
             }
 
+            // ---- Die unterbrochene Partie ------------------------------
+            // Eine Sparringpartie überlebt das Schließen der App. Sie wird
+            // nicht stillschweigend wieder aufgemacht: der Lernende sagt, ob
+            // er weiterspielt oder neu anfängt.
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: !teacher.liveGame && teacher.canResume
+                text: qsTr("Partie fortsetzen")
+                onClicked: {
+                    teacher.resumeGame()
+                    page.toBoard()
+                }
+            }
+
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: !teacher.liveGame
-                text: qsTr("Sparring")
+                text: teacher.canResume ? qsTr("Neue Partie") : qsTr("Sparring")
                 enabled: teacher.engineReady
                 onClicked: {
                     // Handicap 0 is "spiel dein bestes"; the error budget of

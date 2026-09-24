@@ -28,6 +28,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QSettings>
 #include <QTemporaryDir>
 #include <QVariantMap>
 
@@ -80,6 +81,35 @@ bool playSolution(TeacherEngine& teacher, const QString& uci)
     return teacher.play(from, to, promotion);
 }
 
+// Irgendein zulaessiger Zug, der **nicht** die Loesung ist. Fuer die Probe
+// darauf, was nach einer falschen Antwort passiert.
+QString playWrong(TeacherEngine& teacher)
+{
+    const QString right = teacher.solutionForTest();
+    const QStringList also = teacher.task().value(QStringLiteral("alsoAccepted")).toStringList();
+    for (int from = 0; from < 64; ++from) {
+        teacher.setSelectedSquare(from);
+        if (teacher.selectedSquare() != from)
+            continue;
+        const QVariantList targets = teacher.legalTargets();
+        for (int i = 0; i < targets.size(); ++i) {
+            const QVariant entry = targets.at(i);
+            const int to = entry.type() == QVariant::Map
+                    ? entry.toMap().value(QStringLiteral("to")).toInt()
+                    : entry.toInt();
+            const QString uci = QString::fromStdString(
+                    core::squareName(from) + core::squareName(to));
+            if (uci == right || also.contains(uci))
+                continue;
+            if (!teacher.play(from, to, QStringLiteral("q")))
+                continue;
+            return uci;
+        }
+    }
+    teacher.setSelectedSquare(-1);
+    return QString();
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -87,6 +117,11 @@ int main(int argc, char** argv)
     QCoreApplication app(argc, argv);
     QTemporaryDir tmp;
     CHECK(tmp.isValid());
+    // Die Probe schreibt Einstellungen (die unterbrochene Partie haengt daran)
+    // und darf dabei nicht in die des Benutzers greifen.
+    QCoreApplication::setOrganizationName(QStringLiteral("schachlehrer-test"));
+    QCoreApplication::setApplicationName(QStringLiteral("test_session"));
+    QSettings::setPath(QSettings::NativeFormat, QSettings::UserScope, tmp.path());
 
     const QString root = QString::fromLatin1(qgetenv("SCHACH_SOURCE_DIR"));
     const QString bank = (root.isEmpty() ? QStringLiteral(".") : root)
@@ -148,6 +183,49 @@ int main(int argc, char** argv)
         CHECK(teacher.mode() == TeacherEngine::Drill);
     }
 
+    // --- falsch beantwortet: die Aufgabe bleibt stehen ---------------------
+    //
+    // Der gemeldete Fehler: nach einer falschen Antwort lud sofort die
+    // naechste Aufgabe, und "Loesung ansehen" zeigte deren Loesung -- die
+    // verlorene Aufgabe war nicht mehr zu sehen, und die frische war
+    // nebenbei als ungeloest verbucht.
+    {
+        CHECK(teacher.mode() == TeacherEngine::Drill);
+        CHECK(!teacher.awaitingNext());
+        const QString failedTask = teacher.task().value(QStringLiteral("cardId")).toString();
+        const QString failedSolution = teacher.solutionForTest();
+        const QString failedFen = teacher.fen();
+        const int answeredBefore = teacher.reviewCount();
+
+        const QString wrong = playWrong(teacher);
+        CHECK(!wrong.isEmpty());
+        CHECK(teacher.reviewCount() == answeredBefore + 1);
+        // Stehen geblieben: dieselbe Aufgabe, kein Nachladen.
+        CHECK(teacher.awaitingNext());
+        CHECK(teacher.task().value(QStringLiteral("cardId")).toString() == failedTask);
+        CHECK(!teacher.feedback().value(QStringLiteral("text")).toString().isEmpty());
+        // Und das Brett nimmt nichts mehr an, was noch einmal gezaehlt wuerde.
+        CHECK(playWrong(teacher).isEmpty());
+        CHECK(teacher.reviewCount() == answeredBefore + 1);
+
+        // Jetzt die Loesung: die der verlorenen Aufgabe, und sie kostet nichts
+        // mehr -- es kommt keine zweite Aufgabe dazu.
+        teacher.showSolution();
+        CHECK(teacher.reviewCount() == answeredBefore + 1);
+        CHECK(teacher.reviewing());
+        CHECK(teacher.review().value(QStringLiteral("solution")).toString() == failedSolution);
+        CHECK(!teacher.review().value(QStringLiteral("correct")).toBool());
+        CHECK(!teacher.review().value(QStringLiteral("played")).toString().isEmpty());
+        CHECK(teacher.fen() == failedFen);   // die Stellung, in der es schiefging
+
+        // "Weiter ueben" geht dann zur naechsten Aufgabe.
+        teacher.hideSolution();
+        CHECK(!teacher.awaitingNext());
+        CHECK(!teacher.reviewing());
+        CHECK(teacher.mode() == TeacherEngine::Drill);
+        CHECK(teacher.task().value(QStringLiteral("cardId")).toString() != failedTask);
+        CHECK(teacher.reviewCount() == answeredBefore + 1);
+    }
 
     QStringList seen;
     int solved = 0;
@@ -185,8 +263,41 @@ int main(int argc, char** argv)
     std::printf("test_session: %d Aufgaben gelöst, %d verschiedene, %d in der Durchsicht\n",
                 solved, seen.size(), teacher.reviewCount());
     CHECK(solved >= 2);
-    // One given up plus the solved ones: every answered task is kept.
-    CHECK(teacher.reviewCount() == solved + 1);
+    // One given up, one answered wrongly, plus the solved ones: every
+    // answered task is kept.
+    CHECK(teacher.reviewCount() == solved + 2);
+
+    // --- die unterbrochene Partie ------------------------------------------
+    //
+    // Der zweite gemeldete Fehler: die Partie war beim Schliessen der App weg.
+    // Sie wird jetzt nach jedem Zug weggeschrieben, und ein frisch gestartetes
+    // Programm findet sie wieder.
+    {
+        teacher.startSparring(0);
+        CHECK(teacher.mode() == TeacherEngine::Sparring);
+        CHECK(!teacher.canResume());          // eine neue Partie, nichts zu holen
+        // Ohne Engine antwortet der Gegner nicht -- fuer die Sicherung reicht
+        // der Zug des Lernenden.
+        const QString first = playWrong(teacher);
+        CHECK(!first.isEmpty());
+        CHECK(teacher.moveList().size() == 1);
+        CHECK(teacher.canResume());
+
+        // Ein zweiter Lehrer ist ein zweiter Start der App.
+        TeacherEngine again;
+        again.setPaths(QString(), QString(), QString(),
+                       tmp.path() + QStringLiteral("/test.sqlite"));
+        CHECK(again.canResume());
+        again.resumeGame();
+        CHECK(again.mode() == TeacherEngine::Sparring);
+        CHECK(again.moveList().size() == teacher.moveList().size());
+        CHECK(again.fen() == teacher.fen());
+        CHECK(again.flipped() == teacher.flipped());
+        // Und zurueckgenommen werden kann sie auch: die Zuege sind da, nicht
+        // nur die Stellung.
+        again.takeBack();
+        CHECK(again.moveList().size() == 0);
+    }
 
     // A solved task has to leave a trace, or nothing is scheduled and the hint
     // the learner needed is forgotten with it.
