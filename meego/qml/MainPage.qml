@@ -298,6 +298,29 @@ Page {
                 onClicked: teacher.leaveOnline()
             }
 
+            // ---- Gegen ein zweites Gerät -------------------------------
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                wrapMode: Text.WordWrap
+                color: Style.secondaryColor
+                font.pixelSize: Style.fontSizeExtraSmall
+                text: qsTr("Gegen jemanden am zweiten Geraet spielen, im WLAN oder ueber "
+                           + "Bluetooth. Ohne Konto, ohne Internet.")
+            }
+
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: teacher.duel.playing ? qsTr("Zurueck zur Partie am zweiten Geraet")
+                                           : qsTr("Zweites Geraet")
+                onClicked: {
+                    if (teacher.duel.playing)
+                        pageStack.push(Qt.resolvedUrl("BoardPage.qml"))
+                    else
+                        pageStack.push(Qt.resolvedUrl("DuelPage.qml"))
+                }
+            }
+
             // ---- Der Rest ----------------------------------------------
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter

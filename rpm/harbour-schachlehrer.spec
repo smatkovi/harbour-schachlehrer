@@ -1,5 +1,5 @@
 Name:    harbour-schachlehrer
-Version: 0.2.2
+Version: 0.3.0
 Release: 1
 Summary: Chess coach for Sailfish OS: measure, play, diagnose, drill
 License: GPL-3.0-or-later
@@ -20,6 +20,7 @@ BuildRequires:  pkgconfig(sailfishapp)
 # left to chance.
 BuildRequires:  pkgconfig(sailfishsecrets)
 BuildRequires:  pkgconfig(Qt5Core)
+BuildRequires:  pkgconfig(Qt5DBus)
 BuildRequires:  pkgconfig(Qt5Network)
 BuildRequires:  pkgconfig(Qt5Qml)
 BuildRequires:  pkgconfig(Qt5Quick)

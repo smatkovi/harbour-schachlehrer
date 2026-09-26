@@ -16,7 +16,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt5 REQUIRED COMPONENTS Core LinguistTools Network Qml Quick Sql)
+find_package(Qt5 REQUIRED COMPONENTS Core DBus LinguistTools Network Qml Quick Sql)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SAILFISHAPP REQUIRED sailfishapp)
 
@@ -49,6 +49,10 @@ list(SORT SCHACH_CORE_SOURCES)
 # QML facade TeacherEngine. main.cpp is pulled out again below so the tests can
 # link the same objects without a second entry point.
 file(GLOB SCHACH_QT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+# Die Partie gegen ein zweites Gerät: LAN- und Bluetooth-Transport, aus
+# harbour-snapszer übernommen, und das Protokoll darüber.
+file(GLOB SCHACH_NET_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/net/*.cpp)
+list(APPEND SCHACH_QT_SOURCES ${SCHACH_NET_SOURCES})
 list(SORT SCHACH_QT_SOURCES)
 set(SCHACH_MAIN ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
 list(REMOVE_ITEM SCHACH_QT_SOURCES ${SCHACH_MAIN})
@@ -93,7 +97,7 @@ target_include_directories(${SCHACH_APP} PRIVATE
 )
 
 target_link_libraries(${SCHACH_APP}
-    Qt5::Core Qt5::Network Qt5::Qml Qt5::Quick Qt5::Sql ${SAILFISHAPP_LIBRARIES}
+    Qt5::Core Qt5::DBus Qt5::Network Qt5::Qml Qt5::Quick Qt5::Sql ${SAILFISHAPP_LIBRARIES}
 )
 
 # --------------------------------------------------------------------------
@@ -278,7 +282,7 @@ if(SCHACH_BUILD_TESTS)
                 SCHACH_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
                 SCHACH_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
             if(schach_qt_test GREATER -1)
-                target_link_libraries(${t} Qt5::Core Qt5::Network Qt5::Sql)
+                target_link_libraries(${t} Qt5::Core Qt5::DBus Qt5::Network Qt5::Sql)
             else()
                 target_link_libraries(${t} Qt5::Core)
             endif()

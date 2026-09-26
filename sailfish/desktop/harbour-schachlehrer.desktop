@@ -14,6 +14,13 @@ X-Sailfish-ApplicationType=Silica
 # access token goes into (§3.3) — without it the app falls back to a file with
 # 0600 and says so. Base.permission leaves disable-exec.inc commented out, so
 # the Stockfish child process may be started (§1.9).
-Permissions=Internet;Documents;Secrets
+Permissions=Internet;Documents;Secrets;Bluetooth
 OrganizationName=org.smatkovi
 ApplicationName=harbour-schachlehrer
+# Die Partie gegen ein zweites Gerät geht auch über Bluetooth, und dafür
+# braucht es AF_BLUETOOTH-Sockets. Sailjails Seccomp-Filter lässt nur die
+# Protokolle zu, die seine Berechtigungen nennen (Base "unix", Internet
+# "inet,inet6,netlink"); bluetooth nennt keine, im Käfig scheitert also jeder
+# RFCOMM-Socket mit "Operation not supported". Die Kennung oben bleibt, an ihr
+# hängt der Pfad der Einstellungen.
+Sandboxing=Disabled

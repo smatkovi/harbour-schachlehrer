@@ -37,6 +37,8 @@ Page {
 
     property bool sparring: teacher.mode === 3
     property bool drill: teacher.mode === 2
+    // Partie gegen ein zweites Gerät (TeacherEngine::Duel).
+    property bool duel: teacher.mode === 6
     // §7.5: while the blunder check holds a move, the board is read-only —
     // the move is already chosen, the question is what he answers to it.
     property bool checking: teacher.blunderCheck !== undefined
@@ -69,6 +71,24 @@ Page {
                 text: qsTr("Brett drehen")
                 onClicked: teacher.flipped = !teacher.flipped
             }
+            MenuItem {
+                text: qsTr("Remis anbieten")
+                visible: page.duel && teacher.duel.playing
+                onClicked: teacher.duelOfferDraw()
+            }
+            MenuItem {
+                text: qsTr("Aufgeben")
+                visible: page.duel && teacher.duel.playing
+                onClicked: teacher.duelResign()
+            }
+            MenuItem {
+                text: qsTr("Partie verlassen")
+                visible: page.duel
+                onClicked: {
+                    teacher.leaveDuel()
+                    pageStack.pop()
+                }
+            }
         }
 
         Column {
@@ -79,6 +99,7 @@ Page {
             PageHeader {
                 title: page.sparring ? qsTr("Sparring")
                        : page.drill ? qsTr("Uebung")
+                       : page.duel ? qsTr("Zweites Geraet")
                        : qsTr("Brett")
                 description: teacher.gameResult !== "" ? teacher.gameResult
                              : (teacher.whiteToMove ? qsTr("Weiss am Zug")
@@ -86,6 +107,43 @@ Page {
             }
 
             EngineBanner { }
+
+            // Der Stand der Partie gegen das zweite Gerät, und das
+            // Remisangebot, das sonst niemand sähe.
+            Column {
+                width: parent.width
+                spacing: Style.paddingSmall
+                visible: page.duel
+
+                Label {
+                    x: Style.horizontalPageMargin
+                    width: parent.width - 2 * Style.horizontalPageMargin
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: Style.fontSizeExtraSmall
+                    color: Style.secondaryColor
+                    text: teacher.duel.status
+                }
+
+                Row {
+                    x: Style.horizontalPageMargin
+                    spacing: Style.paddingMedium
+                    visible: teacher.duelDrawOffered
+
+                    Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("Remis?")
+                        color: Style.highlightColor
+                    }
+                    Button {
+                        text: qsTr("Ja")
+                        onClicked: teacher.duelAnswerDraw(true)
+                    }
+                    Button {
+                        text: qsTr("Nein")
+                        onClicked: teacher.duelAnswerDraw(false)
+                    }
+                }
+            }
 
             // ---- Die Aufgabenstellung, über dem Brett ------------------
             Label {

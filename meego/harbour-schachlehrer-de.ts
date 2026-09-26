@@ -69,6 +69,10 @@
         <translation>Übung</translation>
     </message>
     <message>
+        <source>Zweites Geraet</source>
+        <translation>Zweites Gerät</translation>
+    </message>
+    <message>
         <source>Weiss am Zug</source>
         <translation>Weiß am Zug</translation>
     </message>
@@ -133,6 +137,61 @@
     <message>
         <source>Nichts faellig</source>
         <translation>Nichts fällig</translation>
+    </message>
+</context>
+<context>
+    <name>DuelPage</name>
+    <message>
+        <source>Zweites Geraet</source>
+        <translation>Zweites Gerät</translation>
+    </message>
+    <message>
+        <source>Gegen jemanden am anderen Geraet spielen</source>
+        <translation>Gegen jemanden am anderen Gerät spielen</translation>
+    </message>
+    <message>
+        <source>Auf beiden Geraeten muss der Schachlehrer laufen. Ueber WLAN muessen </source>
+        <translation>Auf beiden Geräten muss der Schachlehrer laufen. Über WLAN müssen </translation>
+    </message>
+    <message>
+        <source>Tisch eroeffnen</source>
+        <translation>Tisch eröffnen</translation>
+    </message>
+    <message>
+        <source>Weiss</source>
+        <translation>Weiß</translation>
+    </message>
+    <message>
+        <source>Eroeffnen</source>
+        <translation>Eröffnen</translation>
+    </message>
+    <message>
+        <source>Dieses Geraet im Netz: %1</source>
+        <translation>Dieses Gerät im Netz: %1</translation>
+    </message>
+    <message>
+        <source>Dieses Geraet haengt in keinem Netz</source>
+        <translation>Dieses Gerät hängt in keinem Netz</translation>
+    </message>
+    <message>
+        <source>Suche laeuft ...</source>
+        <translation>Suche läuft ...</translation>
+    </message>
+    <message>
+        <source>Noch kein offener Tisch gefunden. Erst am anderen Geraet eroeffnen, </source>
+        <translation>Noch kein offener Tisch gefunden. Erst am anderen Gerät eröffnen, </translation>
+    </message>
+    <message>
+        <source>Ueber Bluetooth beitreten</source>
+        <translation>Über Bluetooth beitreten</translation>
+    </message>
+    <message>
+        <source>Keine gekoppelten Geraete. Die beiden Geraete einmal in den </source>
+        <translation>Keine gekoppelten Geräte. Die beiden Geräte einmal in den </translation>
+    </message>
+    <message>
+        <source>Adresse des eroeffnenden Geraets</source>
+        <translation>Adresse des eröffnenden Geräts</translation>
     </message>
 </context>
 <context>
@@ -273,6 +332,18 @@
     <message>
         <source>Zurueck zur laufenden Partie</source>
         <translation>Zurück zur laufenden Partie</translation>
+    </message>
+    <message>
+        <source>Gegen jemanden am zweiten Geraet spielen, im WLAN oder ueber </source>
+        <translation>Gegen jemanden am zweiten Gerät spielen, im WLAN oder über </translation>
+    </message>
+    <message>
+        <source>Zurueck zur Partie am zweiten Geraet</source>
+        <translation>Zurück zur Partie am zweiten Gerät</translation>
+    </message>
+    <message>
+        <source>Zweites Geraet</source>
+        <translation>Zweites Gerät</translation>
     </message>
 </context>
 <context>

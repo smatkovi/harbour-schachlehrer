@@ -1,3 +1,12 @@
+harbour-schachlehrer (0.3.0) unstable; urgency=low
+
+  * Partie gegen ein zweites Gerät: im selben WLAN oder über Bluetooth, ohne
+    Konto und ohne Internet. Ein Gerät eröffnet und ist über beide Wege
+    zugleich erreichbar, das andere tritt bei. Solange die Partie läuft,
+    bleibt die Maschine aus -- wie bei einer Lichess-Partie.
+
+ -- Sebastian Matkovich <sebastian.matkovich@gmail.com>  Sat, 26 Sep 2026 14:30:00 +0200
+
 harbour-schachlehrer (0.2.5) unstable; urgency=low
 
   * Die Sparringpartie überlebt das Schließen der App: sie wird nach jedem Zug

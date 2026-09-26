@@ -114,6 +114,8 @@ TeacherEngine::TeacherEngine(QObject* parent)
     , m_currentGameId(-1)
     , m_lichess(new Lichess(this))
     , m_sync(0)
+    , m_duel(new DuelSession(this))
+    , m_duelDrawOffered(false)
     , m_clockTimer(new QTimer(this))
     , m_clockWhiteMs(0)
     , m_clockBlackMs(0)
@@ -157,6 +159,16 @@ TeacherEngine::TeacherEngine(QObject* parent)
     connect(m_sync, SIGNAL(finished(int)), this, SLOT(onSyncFinished(int)));
     connect(m_sync, SIGNAL(progress(int, int)), this, SLOT(onLichessChanged()));
     connect(m_sync, SIGNAL(failed(QString)), this, SLOT(onLichessFailed(QString)));
+
+    // Partie gegen ein zweites Gerät (net/DuelSession.h). Sie läuft über
+    // dieselbe Sperre wie eine Lichess-Partie: gegen einen Menschen mit
+    // laufender Maschine zu spielen wäre Betrug.
+    connect(m_duel, SIGNAL(gameStarted(bool, QString)), this, SLOT(onDuelStarted(bool, QString)));
+    connect(m_duel, SIGNAL(movePlayed(QString, int)), this, SLOT(onDuelMove(QString, int)));
+    connect(m_duel, SIGNAL(syncReceived(QStringList)), this, SLOT(onDuelSync(QStringList)));
+    connect(m_duel, SIGNAL(drawOffered()), this, SLOT(onDuelDrawOffered()));
+    connect(m_duel, SIGNAL(gameEnded(QString, QString)), this, SLOT(onDuelEnded(QString, QString)));
+    connect(m_duel, SIGNAL(changed()), this, SLOT(onDuelChanged()));
     m_clockTimer->setInterval(250);
     connect(m_clockTimer, SIGNAL(timeout()), this, SLOT(onClockTick()));
     // The routine is phase-bound (the opening and the endgame question exclude
@@ -1165,6 +1177,25 @@ bool TeacherEngine::play(int fromSquare, int toSquare, const QString& promotion)
         }
 
         finishDrillTask(!wrong, milliseconds);
+        return true;
+    }
+
+    if (m_mode == Duel) {
+        // Gegen das zweite Gerät gibt es keinen Server: wer am Zug ist, zieht
+        // selbst und schickt den Zug hinterher. Die Regeln prüfen beide
+        // Geräte mit demselben Kern, deshalb kann hier nichts ankommen, was
+        // drüben nicht gilt.
+        if (!m_duel->playing() || m_position.whiteToMove() != m_duel->weAreWhite())
+            return false;
+        const int ply = static_cast<int>(m_position.history().size());
+        if (!m_position.play(uci))
+            return false;
+        m_duel->sendMove(QString::fromStdString(uci), ply);
+        m_duelDrawOffered = false;
+        m_selected = -1;
+        emit selectionChanged();
+        emit positionChanged();
+        emit duelChanged();
         return true;
     }
 
@@ -2321,6 +2352,146 @@ void TeacherEngine::beginLiveGame(const QString& gameId)
     emit blunderCheckChanged();
     emit engineChanged();
     emit onlineGameChanged();
+}
+
+// --- Partie gegen ein zweites Gerät (net/DuelSession.h) ---------------------
+
+QObject* TeacherEngine::duelObject()
+{
+    return m_duel;
+}
+
+bool TeacherEngine::hostDuel(int colour, const QString& name)
+{
+    if (refusedWhileLive())
+        return false;
+    QString error;
+    if (!m_duel->startHosting(name, colour, &error)) {
+        setFeedback(tr("Konnte keinen Tisch eröffnen: %1").arg(error), QStringLiteral("duel.error"));
+        emit duelChanged();
+        return false;
+    }
+    emit duelChanged();
+    return true;
+}
+
+void TeacherEngine::joinDuel(const QString& address, const QString& name)
+{
+    if (refusedWhileLive())
+        return;
+    m_duel->join(address, name);
+    emit duelChanged();
+}
+
+void TeacherEngine::joinDuelBluetooth(const QString& address, const QString& name)
+{
+    if (refusedWhileLive())
+        return;
+    m_duel->joinBluetooth(address, name);
+    emit duelChanged();
+}
+
+void TeacherEngine::leaveDuel()
+{
+    m_duel->leave(QString());
+    m_duelDrawOffered = false;
+    endLiveGame();
+    if (m_mode == Duel)
+        setMode(Idle);
+    setPrompt(QString());
+    setFeedback(QString(), QString());
+    emit duelChanged();
+    emit progressChanged();
+}
+
+void TeacherEngine::duelResign()
+{
+    m_duel->sendResign();
+}
+
+void TeacherEngine::duelOfferDraw()
+{
+    m_duel->offerDraw();
+}
+
+void TeacherEngine::duelAnswerDraw(bool accept)
+{
+    m_duelDrawOffered = false;
+    m_duel->answerDraw(accept);
+    emit duelChanged();
+}
+
+void TeacherEngine::onDuelStarted(bool weAreWhite, const QString& opponent)
+{
+    // Dieselbe Sperre wie bei Lichess (platform.md §3.7): solange gegen einen
+    // Menschen gespielt wird, läuft keine Maschine mit.
+    beginLiveGame(QStringLiteral("duel"));
+    startNewGame(weAreWhite);
+    m_gameSource = QStringLiteral("duel");
+    m_gameWhiteName = weAreWhite ? tr("Du") : opponent;
+    m_gameBlackName = weAreWhite ? opponent : tr("Du");
+    m_duelDrawOffered = false;
+    setMode(Duel);
+    setPrompt(weAreWhite
+              ? tr("Du hast Weiß und beginnst.")
+              : tr("Du hast Schwarz. %1 beginnt.").arg(opponent));
+    clearFeedback();
+    emit positionChanged();
+    emit boardChanged();
+    emit duelChanged();
+}
+
+void TeacherEngine::onDuelMove(const QString& uci, int ply)
+{
+    if (m_mode != Duel)
+        return;
+    if (ply != static_cast<int>(m_position.history().size()) || !m_position.play(uci.toStdString())) {
+        // Aus dem Takt: die Liste des Gastgebers gilt.
+        m_duel->requestSync();
+        return;
+    }
+    m_duelDrawOffered = false;
+    m_selected = -1;
+    emit selectionChanged();
+    emit positionChanged();
+    emit duelChanged();
+}
+
+void TeacherEngine::onDuelSync(const QStringList& moves)
+{
+    if (m_mode != Duel)
+        return;
+    m_position.reset();
+    for (int i = 0; i < moves.size(); ++i) {
+        if (!m_position.play(moves.at(i).toStdString()))
+            break;
+    }
+    m_selected = -1;
+    emit selectionChanged();
+    emit positionChanged();
+}
+
+void TeacherEngine::onDuelDrawOffered()
+{
+    if (m_mode != Duel)
+        return;
+    m_duelDrawOffered = true;
+    emit duelChanged();
+}
+
+void TeacherEngine::onDuelEnded(const QString& result, const QString& reason)
+{
+    m_duelDrawOffered = false;
+    endLiveGame();
+    if (!reason.isEmpty())
+        setPrompt(result.isEmpty() ? reason : QStringLiteral("%1 — %2").arg(result, reason));
+    emit duelChanged();
+    emit progressChanged();
+}
+
+void TeacherEngine::onDuelChanged()
+{
+    emit duelChanged();
 }
 
 void TeacherEngine::leaveOnline()

@@ -40,6 +40,7 @@
 #include "PuzzleFeed.h"
 #include "core/SolutionLine.h"
 #include "Sparring.h"
+#include "net/DuelSession.h"
 #include "core/Card.h"
 #include "core/Placement.h"
 #include "core/Position.h"
@@ -179,8 +180,14 @@ class TeacherEngine : public QObject
     // werden.
     Q_PROPERTY(bool canResume READ canResume NOTIFY progressChanged)
 
+    // Partie gegen ein zweites Gerät, über WLAN oder Bluetooth. Die Seite
+    // liest den Zustand hier, gespielt wird über play() wie sonst auch.
+    Q_PROPERTY(QObject* duel READ duelObject CONSTANT)
+    Q_PROPERTY(bool duelDrawOffered READ duelDrawOffered NOTIFY duelChanged)
+
 public:
-    enum Mode { Idle = 0, Placement = 1, Drill = 2, Sparring = 3, Review = 4, Online = 5 };
+    enum Mode { Idle = 0, Placement = 1, Drill = 2, Sparring = 3, Review = 4, Online = 5,
+                Duel = 6 };
     Q_ENUMS(Mode)
 
     // teacher.md §7.5 defaults to Auto; the learner may force it either way.
@@ -307,6 +314,14 @@ public:
     Q_INVOKABLE QVariantList lastFindings() const;
 
     // --- Lichess -------------------------------------------------------------
+    Q_INVOKABLE bool hostDuel(int colour, const QString& name = QString());
+    Q_INVOKABLE void joinDuel(const QString& address, const QString& name = QString());
+    Q_INVOKABLE void joinDuelBluetooth(const QString& address, const QString& name = QString());
+    Q_INVOKABLE void leaveDuel();
+    Q_INVOKABLE void duelResign();
+    Q_INVOKABLE void duelOfferDraw();
+    Q_INVOKABLE void duelAnswerDraw(bool accept);
+
     Q_INVOKABLE void lichessLogIn();
     Q_INVOKABLE void lichessLogOut();
     Q_INVOKABLE void lichessCancelLogIn();
@@ -402,6 +417,7 @@ signals:
     void feedChanged();
     void onlineGameChanged();
     void clocksChanged();
+    void duelChanged();
 
 private slots:
     void onEngineResult(const schach::EngineResult& result);
@@ -419,12 +435,22 @@ private slots:
     void onSyncStored(qint64 databaseId, const QString& initialFen,
                       const QStringList& moves, bool learnerIsWhite);
     void onSyncFinished(int imported);
+    // Partie gegen ein zweites Gerät (net/DuelSession.h).
+    void onDuelStarted(bool weAreWhite, const QString& opponent);
+    void onDuelMove(const QString& uci, int ply);
+    void onDuelSync(const QStringList& moves);
+    void onDuelDrawOffered();
+    void onDuelEnded(const QString& result, const QString& reason);
+    void onDuelChanged();
 
 private:
     void setMode(Mode mode);
     // platform.md §3.7, the only two places `m_liveGameId` ever changes.
     // beginLiveGame() terminates the engine process — not pauses it — and
     // endLiveGame() brings it back once the game is over.
+    QObject* duelObject();
+    bool duelDrawOffered() const { return m_duelDrawOffered; }
+
     void beginLiveGame(const QString& gameId);
     void endLiveGame();
     // True when a request into the engine or the tablebase has to be refused,
@@ -576,6 +602,8 @@ private:
     // --- Lichess -------------------------------------------------------------
     Lichess* m_lichess;
     GameSync* m_sync;
+    DuelSession* m_duel;
+    bool m_duelDrawOffered;
     QTimer* m_clockTimer;
     // **The** instance variable of platform.md §3.7. Set while a Lichess game
     // is running, empty otherwise. Nothing else decides whether the engine may

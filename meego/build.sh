@@ -28,15 +28,17 @@ ENGINE_SRC="src/Analyser.cpp src/Database.cpp src/EngineProcess.cpp src/GameSync
  src/TeacherEngine.cpp src/Themes.cpp src/TokenStore.cpp \
  src/core/Card.cpp src/core/Placement.cpp src/core/Position.cpp src/core/Routine.cpp \
  src/core/Skill.cpp src/core/SolutionLine.cpp src/core/Srs.cpp src/core/Taxonomy.cpp \
- src/core/Uci.cpp src/core/WinProb.cpp"
+ src/core/Uci.cpp src/core/WinProb.cpp \
+ src/net/BtLink.cpp src/net/DuelSession.cpp src/net/LanSession.cpp"
 MOC_HEADERS="src/Analyser.h src/Database.h src/EngineProcess.h src/GameSync.h \
- src/Lichess.h src/PuzzleFeed.h src/Sparring.h src/TeacherEngine.h"
+ src/Lichess.h src/PuzzleFeed.h src/Sparring.h src/TeacherEngine.h \
+ src/net/BtLink.h src/net/DuelSession.h src/net/LanSession.h"
 
 QT4_FLAGS="-std=gnu++17 -O2 -Wall -Wno-register -Wno-deprecated-declarations -Wno-nonnull \
  -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DQT_NO_DEBUG \
  -I$HERE/meego/compat -include $HERE/meego/compat/qt4compat.h \
  -include $HERE/meego/compat/c99math.h -I$HERE/src -I$HERE/src/core -I$HERE/third_party/chess-library"
-QT4_MODULES="QtCore QtGui QtNetwork QtScript QtDeclarative QtSql"
+QT4_MODULES="QtCore QtDBus QtGui QtNetwork QtScript QtDeclarative QtSql"
 
 case "$MODE" in
 arm)
@@ -50,7 +52,7 @@ arm)
     # static libstdc++/libgcc private so Qt stays on its own GCC 4.4 runtime.
     LDFLAGS="--sysroot=$SYSROOT -static-libstdc++ -static-libgcc -Wl,-O1 -Wl,--as-needed \
  -Wl,--exclude-libs,ALL -Wl,--dynamic-linker=/lib/ld-linux.so.3"
-    LIBS="-lQtDeclarative -lQtScript -lQtSql -lQtNetwork -lQtGui -lQtCore -lpthread"
+    LIBS="-lQtDeclarative -lQtScript -lQtSql -lQtNetwork -lQtDBus -lQtGui -lQtCore -lpthread"
     ;;
 *)
     echo "usage: $0 arm" >&2; exit 2 ;;

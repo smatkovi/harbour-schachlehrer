@@ -60,7 +60,7 @@ int main(int argc, char** argv)
         Database database;
         CHECK(database.open(directory.path() + QStringLiteral("/schach/lernen.db")));
         CHECK(database.isOpen());
-        CHECK(database.schemaVersion() == 1);
+        CHECK(database.schemaVersion() == 2);
         CHECK(database.gameCount() == 0);
 
         GameRecord game;

@@ -22,7 +22,7 @@ CORE="$ROOT/src/core/Position.cpp $ROOT/src/core/Uci.cpp $ROOT/src/core/WinProb.
       $ROOT/src/core/SolutionLine.cpp"
 
 CORE_TESTS="perft uci taxonomy srs placement routine line"
-QT_TESTS="fairplay lichess session bank feed"
+QT_TESTS="fairplay lichess session bank feed duel"
 
 for t in $CORE_TESTS; do
     printf 'building test_%s\n' "$t"
@@ -30,17 +30,22 @@ for t in $CORE_TESTS; do
     g++ $CXXFLAGS $INC -o "$OUT/test_$t" "$ROOT/tests/test_$t.cpp" $CORE
 done
 
-QT_INC="$(pkg-config --cflags Qt5Core Qt5Network Qt5Sql)"
-QT_LIBS="$(pkg-config --libs Qt5Core Qt5Network Qt5Sql)"
+QT_INC="$(pkg-config --cflags Qt5Core Qt5DBus Qt5Gui Qt5Network Qt5Sql)"
+QT_LIBS="$(pkg-config --libs Qt5Core Qt5DBus Qt5Gui Qt5Network Qt5Sql)"
 QT_LAYER="$ROOT/src/EngineProcess.cpp $ROOT/src/Database.cpp $ROOT/src/Analyser.cpp \
           $ROOT/src/Sparring.cpp $ROOT/src/Lichess.cpp $ROOT/src/GameSync.cpp \
           $ROOT/src/TeacherEngine.cpp $ROOT/src/ItemBank.cpp $ROOT/src/TokenStore.cpp \
-          $ROOT/src/SecretsTokenStore.cpp $ROOT/src/Themes.cpp $ROOT/src/PuzzleFeed.cpp"
+          $ROOT/src/SecretsTokenStore.cpp $ROOT/src/Themes.cpp $ROOT/src/PuzzleFeed.cpp \
+          $ROOT/src/net/BtLink.cpp $ROOT/src/net/DuelSession.cpp $ROOT/src/net/LanSession.cpp"
 
 mkdir -p "$OUT/moc"
 for h in EngineProcess Database Analyser Sparring Lichess GameSync PuzzleFeed TeacherEngine; do
     "$MOC" -I"$ROOT/src" -I"$ROOT/third_party/chess-library" "$ROOT/src/$h.h" \
         -o "$OUT/moc/moc_$h.cpp"
+done
+# Transport und Protokoll der Partie gegen ein zweites Gerät.
+for h in BtLink DuelSession LanSession; do
+    "$MOC" -I"$ROOT/src" "$ROOT/src/net/$h.h" -o "$OUT/moc/moc_$h.cpp"
 done
 
 for t in $QT_TESTS; do
