@@ -99,6 +99,9 @@ TeacherEngine::TeacherEngine(QObject* parent)
     , m_analysisTotal(0)
     , m_hintLevel(0)
     , m_awaitingNext(false)
+    , m_attempt(0)
+    , m_lineMode(core::SolutionLine::Mode::WholeLine)
+    , m_freeRetry(false)
     , m_resuming(false)
     , m_handicap(0)
     , m_savedHandicap(0)
@@ -1115,7 +1118,53 @@ bool TeacherEngine::play(int fromSquare, int toSquare, const QString& promotion)
         m_selected = -1;
         emit positionChanged();
         emit selectionChanged();
-        finishDrillTask(verdict == core::SolutionLine::Verdict::Solved, milliseconds);
+
+        const bool wrong = verdict != core::SolutionLine::Verdict::Solved;
+
+        // Der freiwillige Durchgang nach der Wertung: die Karte ist schon
+        // verbucht, hier wird nur noch geuebt. Es wird gesagt, ob es diesmal
+        // stimmte, und die Aufgabe faellt in denselben Zustand zurueck, aus
+        // dem "Nochmal" sie geholt hat -- mit denselben drei Knoepfen.
+        if (m_freeRetry) {
+            // Auch hier wird die Loesung nicht genannt: der freiwillige
+            // Durchgang endet wieder bei derselben Frage, und wer sie sehen
+            // will, hat dafuer den Knopf daneben.
+            setFeedback(wrong ? tr("Wieder daneben.") : tr("Diesmal richtig."),
+                        QStringLiteral("drill.retry"));
+            m_awaitingNext = true;
+            emit taskChanged();
+            return true;
+        }
+
+        // Der zweite Versuch (nur in der Uebung): einmal falsch beendet die
+        // Aufgabe nicht. Wer den eigenen Fehlgriff gerade gesehen hat, ist
+        // genau in dem Moment in der Lage, die Stellung noch einmal
+        // anzusehen -- und *das* ist die Stelle, an der eine Uebung etwas
+        // beibringt. Der Messwert leidet nicht darunter: eine erst im
+        // zweiten Anlauf geloeste Aufgabe wird wie eine mit Hinweis
+        // geloeste gewertet (unten in finishDrillTask).
+        // Der Einstufungstest bleibt ausgenommen: §4.1 misst, was der
+        // Lernende ohne fremde Hilfe sieht, und ein zweiter Versuch ist
+        // fremde Hilfe.
+        if (wrong && m_mode == Drill && m_attempt < 2) {
+            // Der Satz dazu sagt, *dass* es nicht geht, und wo -- aber nicht,
+            // was stattdessen richtig waere: das ist ja die Frage, die noch
+            // einmal gestellt wird (§6.2).
+            const int broke = m_line.divergedAt();
+            QString sentence;
+            if (broke > 0)
+                sentence = tr("Bis dahin stimmte es, ab deinem %1. Zug nicht mehr. "
+                              "Sieh es dir noch einmal an.").arg(broke / 2 + 1);
+            else
+                sentence = tr("%1 hält nicht. Sieh es dir noch einmal an.")
+                                   .arg(lineSan(m_taskFen, QStringList() << m_lastAnswer));
+            m_attempt = 2;
+            restartTaskLine();
+            setFeedback(sentence, QStringLiteral("drill.again"));
+            return true;
+        }
+
+        finishDrillTask(!wrong, milliseconds);
         return true;
     }
 
@@ -1348,6 +1397,10 @@ void TeacherEngine::loadNextTask()
 {
     m_hintLevel = 0;
     m_awaitingNext = false;
+    // Jede neue Aufgabe faengt beim ersten Versuch an, und der freiwillige
+    // Durchgang der vorigen ist mit ihr vorbei.
+    m_attempt = 1;
+    m_freeRetry = false;
     m_solutionUci.clear();
     m_currentCardId.clear();
     m_task.clear();
@@ -1406,7 +1459,8 @@ void TeacherEngine::loadNextTask()
         std::vector<std::string> line;
         for (int i = 0; i < item->line.size(); ++i)
             line.push_back(item->line.at(i).toStdString());
-        m_line.start(m_position, line, core::SolutionLine::Mode::WholeLine);
+        m_lineMode = core::SolutionLine::Mode::WholeLine;
+        m_line.start(m_position, line, m_lineMode);
 
         QVariantMap task;
         task[QStringLiteral("kind")] = QStringLiteral("placement");
@@ -1598,8 +1652,11 @@ void TeacherEngine::showSolution()
     // `m_awaitingNext` heisst: die Aufgabe ist schon beantwortet und war
     // falsch. Sie ist nicht mehr offen, es gibt nichts mehr zu verlieren --
     // und genau ihre Loesung ist gemeint.
+    // `m_freeRetry` heisst: die Aufgabe steht zwar offen auf dem Brett, ist
+    // aber laengst gewertet. Sie ein zweites Mal zu werten, weil jemand im
+    // freiwilligen Durchgang die Loesung sehen will, waere ein Zaehlfehler.
     const bool taskOpen = m_reviewIndex < 0 && !m_task.isEmpty() && !m_awaitingNext
-            && (m_mode == Drill || m_mode == Placement);
+            && !m_freeRetry && (m_mode == Drill || m_mode == Placement);
     if (taskOpen) {
         const int milliseconds = m_taskClock.isValid()
                 ? static_cast<int>(m_taskClock.elapsed()) : 0;
@@ -1816,6 +1873,45 @@ void TeacherEngine::updateLineProgress()
     emit taskChanged();
 }
 
+// Dieselbe Aufgabe noch einmal, von ihrer Anfangsstellung her. Gebraucht vom
+// zweiten Versuch und von "Nochmal": beide stellen exakt dieselbe Frage, also
+// auch mit demselben Linienmodus -- ein zweiter Versuch, bei dem die App auf
+// einmal fuer den Gegner mitzoege, waere eine andere Aufgabe.
+void TeacherEngine::restartTaskLine()
+{
+    m_position.setFen(m_taskFen.toStdString());
+    // Eine Abschrift, kein Verweis: `start()` weist sich die Linie sonst
+    // selbst zu und schneidet danach womoeglich am eigenen Puffer herum.
+    const std::vector<std::string> line = m_line.line();
+    m_line.start(m_position, line, m_lineMode);
+    m_lastAnswer.clear();
+    m_task.remove(QStringLiteral("brokeAt"));
+    m_selected = -1;
+    m_flipped = !m_position.whiteToMove();
+    updateLineProgress();
+    emit positionChanged();
+    emit selectionChanged();
+    emit boardChanged();
+    emit taskChanged();
+}
+
+void TeacherEngine::retryTask()
+{
+    // Nur aus dem Zustand heraus, in dem die Aufgabe beantwortet dasteht und
+    // auf eine Entscheidung wartet. Alles andere waere ein zweites Werten.
+    if (!m_awaitingNext || m_mode != Drill)
+        return;
+    if (m_reviewIndex >= 0)
+        endReview();
+    m_showStep = -1;
+    m_showLine.clear();
+    m_awaitingNext = false;
+    m_freeRetry = true;
+    clearFeedback();
+    restartTaskLine();
+    emit reviewChanged();
+}
+
 bool TeacherEngine::undoEntry()
 {
     if (m_mode != Drill && m_mode != Placement)
@@ -1847,9 +1943,9 @@ void TeacherEngine::presentCard(const core::Card& card)
     // the learner's to enter in full.
     const bool guided = card.srs.state == core::CardState::New && card.srs.reps == 0
             && line.size() > 1;
-    m_line.start(m_position, line,
-                 guided ? core::SolutionLine::Mode::Guided
-                        : core::SolutionLine::Mode::WholeLine);
+    m_lineMode = guided ? core::SolutionLine::Mode::Guided
+                        : core::SolutionLine::Mode::WholeLine;
+    m_line.start(m_position, line, m_lineMode);
 
     QVariantMap task;
     task[QStringLiteral("kind")] = QStringLiteral("card");
@@ -1905,8 +2001,12 @@ void TeacherEngine::finishDrillTask(bool correct, int milliseconds)
     // all the learner ever got to see of it.
     rememberAnswer(correct);
 
-    // §5.1: the grade is derived, never asked.
-    const core::Rating rating = core::ratingFor(correct, m_hintLevel > 0, milliseconds);
+    // §5.1: the grade is derived, never asked. Eine erst im zweiten Anlauf
+    // geloeste Aufgabe zaehlt dabei wie eine mit Hinweis geloeste: richtig,
+    // aber nicht sicher gewusst. Ohne das wuerde der zweite Versuch die
+    // Termine schoenrechnen, und die Karte kaeme zu spaet wieder.
+    const bool unaided = m_hintLevel == 0 && m_attempt < 2;
+    const core::Rating rating = core::ratingFor(correct, !unaided, milliseconds);
     if (m_database->isOpen() && !m_currentCardId.isEmpty()) {
         core::Card card;
         if (m_database->loadCard(m_currentCardId, card)) {
@@ -1918,27 +2018,33 @@ void TeacherEngine::finishDrillTask(bool correct, int milliseconds)
             m_database->upsertCard(card);
         }
         m_database->recordReview(m_currentCardId, QDateTime::currentMSecsSinceEpoch() / 1000,
-                                 rating, milliseconds, correct, m_hintLevel > 0);
+                                 rating, milliseconds, correct, !unaided);
     }
     // §6.6: a rejection is a sentence, and on a line it names the move the
     // learner broke off at — "wrong" spread over four moves is the bare
     // "falsch" that the same section forbids.
-    const QString solution = lineSan(m_taskFen,
-                                     splitUci(QString::fromStdString(joinUci(m_line.line()))));
     QString sentence;
-    if (correct) {
+    if (correct && m_attempt >= 2) {
+        sentence = tr("Richtig, im zweiten Anlauf. %1")
+                           .arg(m_task.value(QStringLiteral("titleAfterSolving")).toString());
+    } else if (correct) {
         sentence = tr("Richtig. %1").arg(m_task.value(QStringLiteral("titleAfterSolving")).toString());
     } else if (m_line.divergedAt() > 0 && (m_line.divergedAt() % 2) == 1) {
         // The learner's own moves sit on the even plies; an odd one means they
         // got his answer wrong, which is a different mistake and worth saying
         // so — it is the E5-near "right idea, wrong order" of §6.6.
-        sentence = tr("Deine Züge stimmen. Er antwortet aber anders: %1.").arg(solution);
+        //
+        // Die Loesung steht hier **nicht** mehr im Satz. Sie stand frueher
+        // darin, weil die Aufgabe mit der Antwort vorbei war; jetzt folgt die
+        // Frage "Loesung, nochmal oder weiter", und eine Frage, deren Antwort
+        // zwei Zeilen darueber steht, ist keine. Wer sie sehen will, drueckt
+        // auf "Loesung ansehen" -- dort wird sie genannt *und* vorgespielt.
+        sentence = tr("Deine Züge stimmen. Er antwortet aber anders.");
     } else if (m_line.divergedAt() > 0) {
-        sentence = tr("Bis dahin stimmte es. Ab deinem %1. Zug geht es anders weiter: %2.")
-                           .arg(m_line.divergedAt() / 2 + 1)
-                           .arg(solution);
+        sentence = tr("Bis dahin stimmte es. Ab deinem %1. Zug geht es anders weiter.")
+                           .arg(m_line.divergedAt() / 2 + 1);
     } else {
-        sentence = tr("Der Zug hält nicht. Richtig war %1.").arg(solution);
+        sentence = tr("Der Zug hält nicht.");
     }
     setFeedback(sentence, QStringLiteral("drill"));
     ++m_sessionIndex;
@@ -1966,6 +2072,7 @@ void TeacherEngine::continueDrill()
     m_showStep = -1;
     m_showLine.clear();
     m_awaitingNext = false;
+    m_freeRetry = false;
     clearFeedback();
     emit reviewChanged();
     loadNextTask();

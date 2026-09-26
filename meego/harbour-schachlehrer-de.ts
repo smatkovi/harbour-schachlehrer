@@ -73,6 +73,14 @@
         <translation>Weiß am Zug</translation>
     </message>
     <message>
+        <source>Freier Durchgang - zaehlt nicht mehr</source>
+        <translation>Freier Durchgang - zählt nicht mehr</translation>
+    </message>
+    <message>
+        <source>Die Aufgabe ist gezaehlt. Ein weiterer Versuch aendert daran nichts mehr.</source>
+        <translation>Die Aufgabe ist gezählt. Ein weiterer Versuch ändert daran nichts mehr.</translation>
+    </message>
+    <message>
         <source>Loesung ansehen</source>
         <translation>Lösung ansehen</translation>
     </message>

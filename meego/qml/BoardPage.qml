@@ -98,6 +98,20 @@ Page {
                 font.pixelSize: Style.fontSizeSmall
             }
 
+            // Welcher Versuch gerade läuft. Ohne das steht dieselbe Stellung
+            // wortlos ein zweites Mal da und man glaubt, der Zug sei gar nicht
+            // angekommen.
+            Label {
+                x: Style.horizontalPageMargin
+                width: parent.width - 2 * Style.horizontalPageMargin
+                visible: page.drill && (teacher.retrying || teacher.attempt === 2)
+                text: teacher.retrying ? qsTr("Freier Durchgang - zaehlt nicht mehr")
+                                       : qsTr("Zweiter Versuch")
+                color: Style.secondaryColor
+                wrapMode: Text.WordWrap
+                font.pixelSize: Style.fontSizeExtraSmall
+            }
+
             // ---- Das Brett ---------------------------------------------
             Board {
                 id: board
@@ -141,36 +155,67 @@ Page {
                 width: parent.width
             }
 
-            Row {
-                anchors.horizontalCenter: parent.horizontalCenter
+            // Die Frage nach dem zweiten Fehlversuch: Lösung, nochmal oder
+            // weiter. Sie steht als drei Knöpfe da und nicht als Dialog — die
+            // Stellung, um die es geht, soll dabei sichtbar bleiben.
+            Column {
+                width: parent.width
                 spacing: Style.paddingMedium
                 visible: page.drill && (!solution.active || teacher.awaitingNext)
 
-                Button {
-                    visible: !solution.active
-                    text: qsTr("Loesung ansehen")
-                    // §6.6 Hilfestufe 4. Bei einer **offenen** Aufgabe kostet
-                    // sie die Aufgabe, und das steht auf dem Knopf und nicht im
-                    // Kleingedruckten. War die Aufgabe dagegen schon falsch
-                    // beantwortet, ist nichts mehr zu verlieren — dann wäre die
-                    // Rückfrage eine Unwahrheit, und es wird gleich gezeigt.
-                    onClicked: {
-                        if (teacher.awaitingNext)
-                            teacher.showSolution()
-                        else
-                            solutionRemorse.execute(
-                                qsTr("Zeigen - die Aufgabe gilt dann als nicht geloest"),
-                                function () { teacher.showSolution() })
-                    }
+                Label {
+                    x: Style.horizontalPageMargin
+                    width: parent.width - 2 * Style.horizontalPageMargin
+                    visible: teacher.awaitingNext
+                    wrapMode: Text.WordWrap
+                    color: Style.secondaryColor
+                    font.pixelSize: Style.fontSizeExtraSmall
+                    // Die Karte ist gewertet, egal was jetzt kommt. Das gehört
+                    // dazugesagt, sonst wirkt "Nochmal" wie eine zweite Chance
+                    // auf den Termin.
+                    text: qsTr("Die Aufgabe ist gezaehlt. Ein weiterer Versuch aendert daran nichts mehr.")
                 }
 
-                Button {
-                    // Nach einer falschen Antwort bleibt die Aufgabe stehen,
-                    // bis der Lernende weitergeht — vorher lud die nächste
-                    // sofort nach und die verlorene war nicht mehr zu sehen.
-                    visible: teacher.awaitingNext
-                    text: qsTr("Weiter")
-                    onClicked: teacher.continueDrill()
+                Flow {
+                    width: parent.width - 2 * Style.horizontalPageMargin
+                    x: Style.horizontalPageMargin
+                    spacing: Style.paddingMedium
+
+                    Button {
+                        visible: !solution.active
+                        text: qsTr("Loesung ansehen")
+                        // §6.6 Hilfestufe 4. Bei einer **offenen** Aufgabe kostet
+                        // sie die Aufgabe, und das steht auf dem Knopf und nicht im
+                        // Kleingedruckten. War die Aufgabe dagegen schon
+                        // beantwortet — nach dem zweiten Fehlversuch oder in einem
+                        // freiwilligen Durchgang —, ist nichts mehr zu verlieren,
+                        // dann wäre die Rückfrage eine Unwahrheit.
+                        onClicked: {
+                            if (teacher.awaitingNext || teacher.retrying)
+                                teacher.showSolution()
+                            else
+                                solutionRemorse.execute(
+                                    qsTr("Zeigen - die Aufgabe gilt dann als nicht geloest"),
+                                    function () { teacher.showSolution() })
+                        }
+                    }
+
+                    Button {
+                        // Dieselbe Stellung noch einmal, ohne Wertung: wer die
+                        // Lösung nicht sehen will, sondern sie selbst finden.
+                        visible: teacher.awaitingNext
+                        text: qsTr("Nochmal")
+                        onClicked: teacher.retryTask()
+                    }
+
+                    Button {
+                        // Nach einer falschen Antwort bleibt die Aufgabe stehen,
+                        // bis der Lernende weitergeht — vorher lud die nächste
+                        // sofort nach und die verlorene war nicht mehr zu sehen.
+                        visible: teacher.awaitingNext
+                        text: qsTr("Weiter")
+                        onClicked: teacher.continueDrill()
+                    }
                 }
             }
 

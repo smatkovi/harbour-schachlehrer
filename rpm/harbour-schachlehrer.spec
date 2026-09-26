@@ -1,5 +1,5 @@
 Name:    harbour-schachlehrer
-Version: 0.2.1
+Version: 0.2.2
 Release: 1
 Summary: Chess coach for Sailfish OS: measure, play, diagnose, drill
 License: GPL-3.0-or-later

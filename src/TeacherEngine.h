@@ -163,6 +163,15 @@ class TeacherEngine : public QObject
     // weitergeht. Solange das so ist, meint "Loesung ansehen" **diese**
     // Aufgabe und nicht die naechste, und das Brett nimmt keinen Zug mehr an.
     Q_PROPERTY(bool awaitingNext READ awaitingNext NOTIFY taskChanged)
+    // Der wievielte Versuch gerade laeuft: 1 der erste, 2 der zweite. Ein
+    // falscher erster Zug beendet eine Uebungsaufgabe nicht mehr sofort --
+    // wer den Fehler gerade gesehen hat, ist genau dann in der Lage, es
+    // richtig zu machen, und erst der zweite Fehlversuch wertet die Aufgabe.
+    // 0 heisst: keine offene Aufgabe.
+    Q_PROPERTY(int attempt READ attempt NOTIFY taskChanged)
+    // Ein freiwilliger Durchgang nach der Wertung ("Nochmal"). Er zaehlt
+    // nicht mehr: die Karte ist bewertet, hier wird nur noch geuebt.
+    Q_PROPERTY(bool retrying READ retrying NOTIFY taskChanged)
 
     // --- die unterbrochene Partie -------------------------------------------
     // Eine Sparringpartie ueberlebt das Schliessen der App: sie wird nach
@@ -206,6 +215,8 @@ public:
     QVariantMap review() const;
     QVariantMap solutionView() const;
     bool awaitingNext() const { return m_awaitingNext; }
+    int attempt() const { return m_task.isEmpty() ? 0 : m_attempt; }
+    bool retrying() const { return m_freeRetry; }
     bool canResume() const { return !m_savedMoves.trimmed().isEmpty(); }
     void setSelectedSquare(int square);
     bool flipped() const { return m_flipped; }
@@ -284,6 +295,10 @@ public:
     Q_INVOKABLE void discardSavedGame();
     // Nach einer falsch beantworteten Aufgabe zur naechsten weitergehen.
     Q_INVOKABLE void continueDrill();
+    // Dieselbe Aufgabe noch einmal stellen, nachdem sie gewertet ist. Der
+    // Durchgang aendert an der Karte nichts mehr -- weder Termin noch Zaehler
+    // --, sonst wuerde dieselbe Aufgabe mehrfach in die Statistik laufen.
+    Q_INVOKABLE void retryTask();
     Q_INVOKABLE bool play(int fromSquare, int toSquare, const QString& promotion = QString());
     Q_INVOKABLE void takeBack();
     Q_INVOKABLE void requestHint();
@@ -521,6 +536,16 @@ private:
     // geladen. Frueher lud finishDrillTask() sofort nach, und "Loesung
     // ansehen" traf dadurch die frische Aufgabe statt der eben verlorenen.
     bool m_awaitingNext;
+    // Der laufende Versuch (1 oder 2) und der Modus, mit dem die Linie
+    // gestellt wurde -- der zweite Versuch muss dieselbe Aufgabe unter
+    // denselben Bedingungen sein, also auch mit demselben Linienmodus.
+    int m_attempt;
+    core::SolutionLine::Mode m_lineMode;
+    // Ein Durchgang nach der Wertung: die Aufgabe steht wieder offen, aber
+    // ihr Ergebnis ist schon verbucht.
+    bool m_freeRetry;
+    // Die Aufgabe noch einmal von ihrer Anfangsstellung her stellen.
+    void restartTaskLine();
     // Die Partie wird gerade wiederhergestellt: startSparring() darf den
     // Gegner dann nicht schon ziehen lassen, die Zuege kommen erst noch.
     bool m_resuming;

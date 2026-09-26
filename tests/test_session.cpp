@@ -197,6 +197,23 @@ int main(int argc, char** argv)
         const QString failedFen = teacher.fen();
         const int answeredBefore = teacher.reviewCount();
 
+        // Der erste Fehlgriff beendet die Aufgabe nicht mehr: er stellt sie
+        // ein zweites Mal. Nichts ist gewertet, nichts nachgeladen, und das
+        // Brett steht wieder so da, wie die Aufgabe gestellt wurde.
+        CHECK(teacher.attempt() == 1);
+        const QString firstWrong = playWrong(teacher);
+        CHECK(!firstWrong.isEmpty());
+        CHECK(teacher.attempt() == 2);
+        CHECK(!teacher.awaitingNext());
+        CHECK(teacher.reviewCount() == answeredBefore);
+        CHECK(teacher.task().value(QStringLiteral("cardId")).toString() == failedTask);
+        CHECK(teacher.fen() == failedFen);
+        CHECK(!teacher.feedback().value(QStringLiteral("text")).toString().isEmpty());
+        // Und es ist der Satz fuer den zweiten Versuch, nicht der, der die
+        // Loesung nennt (§6.2).
+        CHECK(teacher.feedback().value(QStringLiteral("key")).toString()
+              == QStringLiteral("drill.again"));
+
         const QString wrong = playWrong(teacher);
         CHECK(!wrong.isEmpty());
         CHECK(teacher.reviewCount() == answeredBefore + 1);
@@ -208,6 +225,13 @@ int main(int argc, char** argv)
         CHECK(playWrong(teacher).isEmpty());
         CHECK(teacher.reviewCount() == answeredBefore + 1);
 
+        // Und der Satz nach dem zweiten Fehlversuch nennt die Loesung
+        // **nicht**: gleich darunter wird gefragt, ob man sie sehen will,
+        // nochmal probieren oder weitergehen -- eine Frage, deren Antwort
+        // schon dasteht, ist keine.
+        const QString afterWrong = teacher.feedback()
+                                           .value(QStringLiteral("text")).toString();
+
         // Jetzt die Loesung: die der verlorenen Aufgabe, und sie kostet nichts
         // mehr -- es kommt keine zweite Aufgabe dazu.
         teacher.showSolution();
@@ -217,6 +241,10 @@ int main(int argc, char** argv)
         CHECK(!teacher.review().value(QStringLiteral("correct")).toBool());
         CHECK(!teacher.review().value(QStringLiteral("played")).toString().isEmpty());
         CHECK(teacher.fen() == failedFen);   // die Stellung, in der es schiefging
+        const QString solutionSan = teacher.review()
+                                            .value(QStringLiteral("solutionSan")).toString();
+        CHECK(!solutionSan.isEmpty());
+        CHECK(!afterWrong.contains(solutionSan));
 
         // "Weiter ueben" geht dann zur naechsten Aufgabe.
         teacher.hideSolution();
@@ -224,6 +252,72 @@ int main(int argc, char** argv)
         CHECK(!teacher.reviewing());
         CHECK(teacher.mode() == TeacherEngine::Drill);
         CHECK(teacher.task().value(QStringLiteral("cardId")).toString() != failedTask);
+        CHECK(teacher.reviewCount() == answeredBefore + 1);
+    }
+
+    // --- im zweiten Anlauf geloest ----------------------------------------
+    //
+    // Falsch, dann richtig: die Aufgabe gilt als geloest, und sie wird genau
+    // einmal verbucht -- nicht zweimal, weil zwei Zuege gespielt wurden.
+    {
+        CHECK(teacher.mode() == TeacherEngine::Drill);
+        const QString cardId = teacher.task().value(QStringLiteral("cardId")).toString();
+        const int answeredBefore = teacher.reviewCount();
+        const bool guided = teacher.task().value(QStringLiteral("guided")).toBool();
+        const QStringList line = teacher.solutionLineForTest().split(QLatin1Char(' '));
+        CHECK(!playWrong(teacher).isEmpty());
+        CHECK(teacher.attempt() == 2);
+        CHECK(teacher.reviewCount() == answeredBefore);
+        // Die Aufgabe steht wieder am Anfang: die ganze Linie von vorn.
+        bool played = true;
+        for (int move = 0; move < line.size() && played; ++move) {
+            if (guided && (move % 2) == 1)
+                continue;
+            played = playSolution(teacher, line.at(move));
+        }
+        CHECK(played);
+        CHECK(teacher.reviewCount() == answeredBefore + 1);
+        // Richtig ist richtig: es wird weitergeladen, nicht nachgefragt.
+        CHECK(!teacher.awaitingNext());
+        CHECK(teacher.task().value(QStringLiteral("cardId")).toString() != cardId);
+    }
+
+    // --- "Nochmal" nach dem zweiten Fehlversuch ---------------------------
+    //
+    // Die dritte Antwort auf die Frage "Loesung, nochmal oder weiter": noch
+    // einmal dieselbe Stellung. Sie ist dann schon gewertet, und genau das
+    // darf der Durchgang nicht noch einmal tun.
+    {
+        CHECK(teacher.mode() == TeacherEngine::Drill);
+        const QString cardId = teacher.task().value(QStringLiteral("cardId")).toString();
+        const QString askedFen = teacher.fen();
+        const int answeredBefore = teacher.reviewCount();
+
+        CHECK(!playWrong(teacher).isEmpty());   // erster Versuch
+        CHECK(!playWrong(teacher).isEmpty());   // zweiter Versuch
+        CHECK(teacher.awaitingNext());
+        CHECK(teacher.reviewCount() == answeredBefore + 1);
+
+        teacher.retryTask();
+        CHECK(teacher.retrying());
+        CHECK(!teacher.awaitingNext());
+        CHECK(teacher.task().value(QStringLiteral("cardId")).toString() == cardId);
+        CHECK(teacher.fen() == askedFen);
+        CHECK(teacher.attempt() == 2);
+
+        // Ein Zug im freiwilligen Durchgang wird beantwortet, aber nicht
+        // gezaehlt -- und danach steht wieder die Frage da.
+        CHECK(!playWrong(teacher).isEmpty());
+        CHECK(teacher.reviewCount() == answeredBefore + 1);
+        CHECK(teacher.awaitingNext());
+        CHECK(teacher.feedback().value(QStringLiteral("key")).toString()
+              == QStringLiteral("drill.retry"));
+
+        // Auch die Loesung anzusehen darf jetzt nichts mehr kosten.
+        teacher.showSolution();
+        CHECK(teacher.reviewCount() == answeredBefore + 1);
+        teacher.hideSolution();
+        CHECK(!teacher.retrying());
         CHECK(teacher.reviewCount() == answeredBefore + 1);
     }
 
@@ -263,9 +357,10 @@ int main(int argc, char** argv)
     std::printf("test_session: %d Aufgaben gelöst, %d verschiedene, %d in der Durchsicht\n",
                 solved, seen.size(), teacher.reviewCount());
     CHECK(solved >= 2);
-    // One given up, one answered wrongly, plus the solved ones: every
-    // answered task is kept.
-    CHECK(teacher.reviewCount() == solved + 2);
+    // Eine aufgegebene, eine zweimal falsch beantwortete, eine im zweiten
+    // Anlauf geloeste, eine mit "Nochmal" wiederholte, dazu die geloesten:
+    // jede beantwortete Aufgabe wird aufgehoben, und keine doppelt.
+    CHECK(teacher.reviewCount() == solved + 4);
 
     // --- die unterbrochene Partie ------------------------------------------
     //
