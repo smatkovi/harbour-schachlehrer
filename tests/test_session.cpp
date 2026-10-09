@@ -25,6 +25,7 @@
 #include "Database.h"
 #include "core/Position.h"
 #include "core/Srs.h"
+#include "core/Taxonomy.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -409,6 +410,33 @@ int main(int argc, char** argv)
     CHECK(hinted.dueDay <= clean.dueDay);
     CHECK(core::ratingFor(true, true, 1000) == core::Rating::Hard);
     CHECK(core::ratingFor(true, false, 1000) == core::Rating::Easy);
+
+    // -- Eine Karte ohne Loesungszug ist eine Sackgasse ---------------------
+    //
+    // Sie zeigt eine Stellung und nimmt keinen Zug an, weil es keinen gibt,
+    // der als richtig gelten koennte -- und bleibt fuer immer faellig. So war
+    // "Gabel zugelassen" unloesbar: Die verpasste Gelegenheit im Sparring
+    // machte eine Karte, ohne den Zug zu nennen, der sie ausnutzt.
+    {
+        core::Finding ohne;
+        ohne.cls = core::ErrorClass::A3;
+        ohne.dimension = core::dimensionOf(ohne.cls);
+        ohne.fen = QStringLiteral("r1bq1rk1/pp3ppp/2n1pn2/3p4/8/2PN1B2/PP3bPP/R1BQ1RK1 w - - 0 1")
+                   .toStdString();
+        ohne.makesCard = core::makesCard(ohne.cls) && !ohne.bestMove.empty();
+        CHECK(!ohne.makesCard);          // genau diese Karte darf nicht entstehen
+
+        core::Card sackgasse = core::cardFromFinding(ohne, 0);
+        sackgasse.id = "TEST/ohne-loesung";
+        CHECK(sackgasse.solutionUci.empty());
+        CHECK(db.upsertCard(sackgasse));
+        core::Card wieder;
+        CHECK(db.loadCard(QStringLiteral("TEST/ohne-loesung"), wieder));
+        // Und beim Aufraeumen muss sie verschwinden, sonst steht eine alte
+        // Sackgasse fuer immer in der Wiederholung.
+        CHECK(db.dropUnsolvableCards() >= 1);
+        CHECK(!db.loadCard(QStringLiteral("TEST/ohne-loesung"), wieder));
+    }
     if (failures) {
         std::printf("%d Fehler\n", failures);
         return 1;

@@ -145,7 +145,8 @@ TeacherEngine::TeacherEngine(QObject* parent)
             this, SLOT(onAnalysisFinished(QVector<schach::core::Finding>)));
     connect(m_analyser, SIGNAL(progress(int, int)), this, SLOT(onAnalysisProgress(int, int)));
     connect(m_analyser, SIGNAL(failed(QString)), this, SLOT(onEngineFailed(QString)));
-    connect(m_sparring, SIGNAL(chanceMissed(QString, int)), this, SLOT(onChanceMissed(QString, int)));
+    connect(m_sparring, SIGNAL(chanceMissed(QString, int, QString)),
+            this, SLOT(onChanceMissed(QString, int, QString)));
 
     // Lichess (platform.md §3). The fair-play lock hangs off gameStarted and
     // gameFinished and off nothing else.
@@ -792,6 +793,14 @@ void TeacherEngine::fetchPuzzles()
 void TeacherEngine::requestLevelTopUp(core::Dimension dimension)
 {
     if (!m_feed)
+        return;
+    // Schon einer unterwegs. Ohne diese Zeile koennte sich der Nachschub
+    // selbst nachladen: onFeedChanged() baut die Sitzung neu, und wenn die
+    // geholten Stellungen auch schon alle gesehen sind, stuende hier sofort
+    // die naechste Anfrage. Der Feed bremst das nach ein paar Runden selbst
+    // ab, aber "nach ein paar Runden" ist keine Begruendung dafuer, einmal
+    // zu viel zu fragen.
+    if (m_waitingForPuzzles)
         return;
     // Nicht waehrend einer laufenden Partie: Der Client stellt eine Anfrage
     // auf einmal (platform.md §3.4), und ein Stapel Aufgaben darf nie vor
@@ -2366,7 +2375,8 @@ void TeacherEngine::onAnalysisFinished(const QVector<core::Finding>& findings)
     emit routineChanged();
 }
 
-void TeacherEngine::onChanceMissed(const QString& fen, int errorClass)
+void TeacherEngine::onChanceMissed(const QString& fen, int errorClass,
+                                   const QString& solution)
 {
     // §7.4: the missed chance becomes a card in the same session.
     if (!m_database->isOpen())
@@ -2375,11 +2385,18 @@ void TeacherEngine::onChanceMissed(const QString& fen, int errorClass)
     finding.cls = static_cast<core::ErrorClass>(errorClass);
     finding.dimension = core::dimensionOf(finding.cls);
     finding.fen = fen.toStdString();
-    finding.makesCard = core::makesCard(finding.cls);
+    finding.bestMove = solution.toStdString();
+    finding.makesCard = core::makesCard(finding.cls) && !finding.bestMove.empty();
     finding.dW = 20.0;
     finding.sentence = core::errorTemplate(finding.cls);
-    const core::Card card = core::cardFromFinding(finding, today());
-    m_database->upsertCard(card);
+    // Eine Karte ohne Loesung ist keine Aufgabe, sondern eine Sackgasse: Es
+    // gibt dann keinen Zug, der als richtig gelten kann, und der Lernende
+    // sitzt vor einer Stellung, die er nicht verlassen kann. Dann lieber
+    // keine Karte -- die Rueckmeldung und die zweite Gelegenheit bleiben.
+    if (finding.makesCard) {
+        const core::Card card = core::cardFromFinding(finding, today());
+        m_database->upsertCard(card);
+    }
     // §7.5: C2 (and A1, B1) put the blunder check back on.
     if (core::BlunderCheckSchedule::bringsBack(finding.cls))
         m_sparring->requireBlunderCheck();

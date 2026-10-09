@@ -509,8 +509,8 @@
         <translation>Stockfish läuft als eigenes Programm neben der App und wird über UCI angesprochen. Die Endspieldatenbanken für drei und vier Steine sind im Paket enthalten; es wird nichts nachgeladen.</translation>
     </message>
     <message>
-        <source>%1 Uebungsstellungen sind gerade in Gebrauch, %2 liegen geholt bereit. Eine Stellung, die wiederkommt, misst nur noch, ob du sie kennst - deshalb ist Nachschub etwas wert. Geholte kommen beim naechsten Start dazu, nicht mitten in einer Sitzung.</source>
-        <translation>%1 Übungsstellungen sind gerade in Gebrauch, %2 liegen geholt bereit. Eine Stellung, die wiederkommt, misst nur noch, ob du sie kennst - deshalb ist Nachschub etwas wert. Geholte kommen beim nächsten Start dazu, nicht mitten in einer Sitzung.</translation>
+        <source>%1 Uebungsstellungen sind gerade in Gebrauch, %2 liegen geholt bereit. Eine Stellung, die wiederkommt, misst nur noch, ob du sie kennst - deshalb ist Nachschub etwas wert. Was im Hintergrund dazukommt, zaehlt ab dem naechsten Start; was geholt wird, weil die Aufgaben auf deinem Niveau durch sind, sofort.</source>
+        <translation>%1 Übungsstellungen sind gerade in Gebrauch, %2 liegen geholt bereit. Eine Stellung, die wiederkommt, misst nur noch, ob du sie kennst - deshalb ist Nachschub etwas wert. Was im Hintergrund dazukommt, zählt ab dem nächsten Start; was geholt wird, weil die Aufgaben auf deinem Niveau durch sind, sofort.</translation>
     </message>
     <message>
         <source>Beim Start, wenn eine Verbindung da ist. Ohne das laeuft alles weiter - die App bringt ihre Aufgaben mit und braucht dafuer weder Netz noch Konto.</source>

@@ -1441,7 +1441,14 @@ Finding makeFinding(ErrorClass cls, const MoveFeatures& m, bool belowThreshold)
     finding.refutation = m.opponentReply;
     finding.ply = m.ply;
     finding.belowThreshold = belowThreshold;
-    finding.makesCard = makesCard(cls) && !belowThreshold;
+    // Ohne besten Zug keine Karte. Eine Karte ist eine Aufgabe: Sie zeigt die
+    // Stellung vor dem eigenen Fehler und will den Zug, der ihn vermeidet.
+    // Fehlt der (die Maschine hat keinen genannt), gibt es nichts, was als
+    // richtig gelten koennte -- die Karte laesst sich dann nie loesen, und
+    // genau so ist es aufgefallen: "Gabel zugelassen" ohne Loesung, bei der
+    // kein Zug angenommen wurde. Die Beobachtung bleibt in den Befunden, nur
+    // zur Uebungskarte taugt sie nicht.
+    finding.makesCard = makesCard(cls) && !belowThreshold && !m.best.empty();
     finding.sentence = sentenceFor(cls, m);
     return finding;
 }

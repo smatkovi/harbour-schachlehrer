@@ -120,6 +120,7 @@ void Sparring::reset(int learnerElo, const QVector<core::ErrorClass>& classesThe
 void Sparring::clearPending()
 {
     m_pendingFen.clear();
+    m_pendingSolution.clear();
     m_pendingClass = core::ErrorClass::None;
     m_pendingAge = 0;
 }
@@ -258,9 +259,19 @@ QString Sparring::chooseMove(const core::Position& position, const QVector<Score
     m_lastMistakePly = m_ply;
     ++m_mistakesMade;
 
-    m_pendingFen = QString::fromStdString(position.after(chosen.toStdString()).fen());
+    const core::Position nachFehler = position.after(chosen.toStdString());
+    m_pendingFen = QString::fromStdString(nachFehler.fen());
     m_pendingClass = target->cls;
     m_pendingAge = 0;
+    // Und gleich den Zug festhalten, der die Gelegenheit ausnutzt. Ohne ihn
+    // wird aus der verpassten Gelegenheit eine Karte ohne Loesung, bei der
+    // kein Zug als richtig gelten kann -- genau so war "Gabel zugelassen"
+    // unloesbar. producesErrorPicture() rechnet denselben Zug schon aus, um
+    // ueberhaupt zu pruefen, ob das Fehlerbild entsteht; hier wird er
+    // behalten statt weggeworfen. Bleibt er leer (Fehlerbilder ohne
+    // Schlagzug, etwa die Grundreihe), entsteht keine Karte.
+    int see = 0;
+    m_pendingSolution = QString::fromStdString(nachFehler.bestFreeCapture(1, &see));
     emit mistakeMade(m_pendingFen, static_cast<int>(m_pendingClass));
     return chosen;
 }
@@ -279,8 +290,9 @@ bool Sparring::noteLearnerMove(const core::Position& positionAfter)
     // learner notices the chance *after* it is gone and gets it back at once.
     const QString fen = m_pendingFen;
     const core::ErrorClass cls = m_pendingClass;
+    const QString loesung = m_pendingSolution;
     clearPending();
-    emit chanceMissed(fen, static_cast<int>(cls));
+    emit chanceMissed(fen, static_cast<int>(cls), loesung);
     return true;
 }
 

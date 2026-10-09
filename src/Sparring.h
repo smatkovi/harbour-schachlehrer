@@ -124,7 +124,10 @@ public:
 
 signals:
     void mistakeMade(const QString& fen, int errorClass);
-    void chanceMissed(const QString& fen, int errorClass);
+    // `solution` ist der Zug, der die verpasste Gelegenheit ausnutzt -- die
+    // Antwort auf die Karte, die daraus wird. Leer heisst: fuer dieses
+    // Fehlerbild laesst sich hier keiner nennen, dann entsteht keine Karte.
+    void chanceMissed(const QString& fen, int errorClass, const QString& solution);
 
 private:
     bool windowOpen(const core::Position& position) const;
@@ -137,6 +140,7 @@ private:
     int m_ply;
     int m_lastMistakePly;
     QString m_pendingFen;
+    QString m_pendingSolution;
     core::ErrorClass m_pendingClass;
     int m_pendingAge;          // in the learner's own moves
     // §7.5, in the Qt-free core so the schedule can be checked on its own.

@@ -1,5 +1,5 @@
 Name:    harbour-schachlehrer
-Version: 0.4.0
+Version: 0.4.1
 Release: 1
 Summary: Chess coach for Sailfish OS: measure, play, diagnose, drill
 License: GPL-3.0-or-later
@@ -209,6 +209,13 @@ exit 0
 %{_datadir}/licenses/%{name}
 
 %changelog
+* Fri Oct 09 2026 smatkovi <smatkovi@users.noreply.github.com> - 0.4.1-1
+- "Gabel zugelassen" liess sich nie loesen: Aus einer verpassten Gelegenheit
+  im Sparring entstand eine Karte ohne Loesungszug, und dann kann kein Zug
+  richtig sein. Der ausnutzende Zug wird jetzt mitgegeben; ohne ihn entsteht
+  keine Karte, und schon gespeicherte Sackgassen werden beim Start entfernt
+- Der gezielte Nachschub fragt nicht nach, solange schon einer laeuft
+
 * Fri Oct 09 2026 smatkovi <smatkovi@users.noreply.github.com> - 0.4.0-1
 - Sind die Uebungsstellungen auf dem gemessenen Niveau durch, holt die App
   gezielt Nachschub von Lichess -- auf der passenden Schwierigkeitsstufe,

@@ -117,7 +117,10 @@ bool Database::open(const QString& path)
     exec(QStringLiteral("PRAGMA journal_mode=WAL"));
     exec(QStringLiteral("PRAGMA synchronous=NORMAL"));
     exec(QStringLiteral("PRAGMA foreign_keys=ON"));
-    return createSchema();
+    if (!createSchema())
+        return false;
+    dropUnsolvableCards();
+    return true;
 }
 
 void Database::close()
@@ -571,6 +574,22 @@ QVector<core::Card> Database::dueCards(qint64 today, int limit) const
     while (query.next())
         out.append(cardFromRow(query));
     return out;
+}
+
+int Database::dropUnsolvableCards()
+{
+    // Karten ohne Loesungszug sind Sackgassen: Sie zeigen eine Stellung und
+    // nehmen keinen Zug an, weil es keinen gibt, der als richtig gilt. Bis
+    // 0.4.0 entstand genau so eine aus jeder verpassten Gelegenheit im
+    // Sparring ("Gabel zugelassen" ohne Loesung). Die Ursache ist behoben;
+    // die schon gespeicherten muessen trotzdem weg, sonst bleibt die alte
+    // Karte fuer immer in der Wiederholung stehen.
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral("DELETE FROM cards WHERE solution_uci IS NULL "
+                                 "OR solution_uci = ''"));
+    if (!query.exec())
+        return 0;
+    return query.numRowsAffected();
 }
 
 QStringList Database::cardIdsStartingWith(const QString& prefix) const

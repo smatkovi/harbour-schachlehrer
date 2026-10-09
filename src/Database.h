@@ -138,6 +138,10 @@ public:
     // ob er sie kennt (teacher.md §5.2). Der Praefix wird als LIKE-Muster
     // benutzt, deshalb nur mit festen Zeichenketten aufrufen.
     QStringList cardIdsStartingWith(const QString& prefix) const;
+    // Loescht Karten ohne Loesungszug und sagt, wie viele es waren. Laeuft
+    // beim Oeffnen: eine Karte, die keinen Zug annehmen kann, laesst sich
+    // nicht abarbeiten und bliebe sonst ewig faellig.
+    int dropUnsolvableCards();
     int dueCardCount(qint64 today) const;
     int backlogCount(qint64 today) const;
     int newCardsCreatedOn(qint64 day) const;

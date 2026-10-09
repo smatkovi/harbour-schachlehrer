@@ -439,7 +439,8 @@ private slots:
     void onEngineFailed(const QString& reason);
     void onAnalysisFinished(const QVector<schach::core::Finding>& findings);
     void onAnalysisProgress(int done, int total);
-    void onChanceMissed(const QString& fen, int errorClass);
+    void onChanceMissed(const QString& fen, int errorClass,
+                        const QString& solution);
     void onOpponentTurn();
     void onLichessChanged();
     void onLichessFailed(const QString& sentence);

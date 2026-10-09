@@ -166,7 +166,7 @@ Page {
                 // teacher.md §5.2 is the reason this exists, and it is worth
                 // saying: a position that comes back measures whether you
                 // remember it, not whether you can do it.
-                text: qsTr("%1 Uebungsstellungen sind gerade in Gebrauch, %2 liegen geholt bereit. Eine Stellung, die wiederkommt, misst nur noch, ob du sie kennst - deshalb ist Nachschub etwas wert. Geholte kommen beim naechsten Start dazu, nicht mitten in einer Sitzung.")
+                text: qsTr("%1 Uebungsstellungen sind gerade in Gebrauch, %2 liegen geholt bereit. Eine Stellung, die wiederkommt, misst nur noch, ob du sie kennst - deshalb ist Nachschub etwas wert. Was im Hintergrund dazukommt, zaehlt ab dem naechsten Start; was geholt wird, weil die Aufgaben auf deinem Niveau durch sind, sofort.")
                       .arg(teacher.itemCount).arg(teacher.feedCount)
             }
 

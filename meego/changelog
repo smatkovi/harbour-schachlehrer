@@ -1,3 +1,15 @@
+harbour-schachlehrer (0.4.1) unstable; urgency=low
+
+  * "Gabel zugelassen" ließ sich nie lösen. Aus einer verpassten Gelegenheit
+    im Sparring entstand eine Karte **ohne Lösungszug** -- und dann kann kein
+    Zug richtig sein, denn es gibt keinen, der als richtig gilt. Der Zug, der
+    die Gelegenheit ausnutzt, wird jetzt mitgegeben; lässt er sich nicht
+    nennen, entsteht gar keine Karte. Schon gespeicherte Sackgassen werden
+    beim Start entfernt.
+  * Der gezielte Nachschub fragt nicht noch einmal, solange schon einer läuft.
+
+ -- Sebastian Matkovich <sebastian.matkovich@gmail.com>  Fri, 09 Oct 2026 13:40:00 +0200
+
 harbour-schachlehrer (0.4.0) unstable; urgency=low
 
   * Sind die Übungsstellungen auf dem gemessenen Niveau durch, holt die App

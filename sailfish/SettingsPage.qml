@@ -167,8 +167,9 @@ Page {
                 // remember it, not whether you can do it.
                 text: qsTr("%1 Übungsstellungen sind gerade in Gebrauch, %2 liegen geholt "
                            "bereit. Eine Stellung, die wiederkommt, misst nur noch, ob du sie "
-                           "kennst — deshalb ist Nachschub etwas wert. Geholte kommen beim "
-                           "nächsten Start dazu, nicht mitten in einer Sitzung.")
+                           "kennst — deshalb ist Nachschub etwas wert. Was im Hintergrund "
+                           "dazukommt, zählt ab dem nächsten Start; was geholt wird, weil die "
+                           "Aufgaben auf deinem Niveau durch sind, sofort.")
                       .arg(teacher.itemCount).arg(teacher.feedCount)
             }
 
