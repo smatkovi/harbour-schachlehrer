@@ -224,6 +224,55 @@ int main(int argc, char** argv)
         feed.setHeld(false);
     }
 
+    // -- Welche Lichess-Stufe zu welchem gemessenen Niveau gehoert ----------
+    //
+    // Die Zuordnung ist der Kern des gezielten Nachschubs: Wer bei 1500 steht
+    // und dort alles geloest hat, ist mit Aufgaben um 894 nicht bedient. Die
+    // Grenzen stehen in PuzzleFeed.cpp und stammen aus den dort gemessenen
+    // Mittelwerten der fuenf Stufen.
+    {
+        CHECK(PuzzleFeed::levelForTheta(600.0) == QLatin1String("easiest"));
+        CHECK(PuzzleFeed::levelForTheta(1000.0) == QLatin1String("easiest"));
+        CHECK(PuzzleFeed::levelForTheta(1200.0) == QLatin1String("easier"));
+        CHECK(PuzzleFeed::levelForTheta(1500.0) == QLatin1String("normal"));
+        CHECK(PuzzleFeed::levelForTheta(1750.0) == QLatin1String("harder"));
+        CHECK(PuzzleFeed::levelForTheta(2100.0) == QLatin1String("hardest"));
+        // Monoton: ein hoeheres Niveau darf nie eine leichtere Stufe geben.
+        const char* reihe[] = { "easiest", "easier", "normal", "harder", "hardest" };
+        int zuletzt = -1;
+        for (double theta = 500.0; theta <= 2500.0; theta += 25.0) {
+            const QString stufe = PuzzleFeed::levelForTheta(theta);
+            int rang = -1;
+            for (int i = 0; i < 5; ++i)
+                if (stufe == QLatin1String(reihe[i]))
+                    rang = i;
+            CHECK(rang >= zuletzt);
+            zuletzt = rang;
+        }
+    }
+
+    // -- Der gezielte Nachschub haelt sich an die Einwilligung --------------
+    //
+    // Ohne Lichess-Objekt kommt nichts auf die Leitung; geprueft wird hier,
+    // dass die Buchhaltung stimmt und `trotzVerbot` nicht dauerhaft gilt.
+    {
+        QTemporaryDir dir;
+        PuzzleFeed gezielt(0);
+        gezielt.setPaths(dir.path(), QString());
+        gezielt.setTarget(200);
+        CHECK(gezielt.extraWanted() == 0);
+        gezielt.fetchForLevel(QStringLiteral("normal"), 50);
+        // Angefordert ist angefordert, auch wenn ohne Client nichts losgeht.
+        CHECK(gezielt.extraWanted() == 50);
+        CHECK(!gezielt.fetching());
+        CHECK(!gezielt.allowed());
+        // Null oder weniger ist keine Anfrage.
+        PuzzleFeed zweite(0);
+        zweite.setPaths(dir.path(), QString());
+        zweite.fetchForLevel(QStringLiteral("normal"), 0);
+        CHECK(zweite.extraWanted() == 0);
+    }
+
     if (failures) {
         std::fprintf(stderr, "\n%d Prüfung(en) fehlgeschlagen\n", failures);
         return 1;

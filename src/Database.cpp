@@ -573,6 +573,19 @@ QVector<core::Card> Database::dueCards(qint64 today, int limit) const
     return out;
 }
 
+QStringList Database::cardIdsStartingWith(const QString& prefix) const
+{
+    QStringList out;
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral("SELECT id FROM cards WHERE id LIKE ?"));
+    query.addBindValue(prefix + QLatin1Char('%'));
+    if (!query.exec())
+        return out;
+    while (query.next())
+        out.append(query.value(0).toString());
+    return out;
+}
+
 int Database::dueCardCount(qint64 today) const
 {
     QSqlQuery query(m_db);

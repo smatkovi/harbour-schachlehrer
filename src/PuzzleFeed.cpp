@@ -148,6 +148,8 @@ PuzzleFeed::PuzzleFeed(Lichess* lichess, QObject* parent)
     , m_pause(new QTimer(this))
     , m_target(0)
     , m_level(0)
+    , m_extra(0)
+    , m_oneShot(false)
     , m_emptyRounds(0)
     , m_pending(false)
     , m_allowed(false)
@@ -242,17 +244,55 @@ void PuzzleFeed::setAllowed(bool allowed)
 
 void PuzzleFeed::refill()
 {
-    if (!m_allowed || m_held || m_pending || !m_lichess)
+    // m_oneShot gilt nur, solange der angeforderte Nachschub laeuft: Der
+    // Knopfdruck ist die Einwilligung fuer diese eine Anfrage.
+    if ((!m_allowed && !m_oneShot) || m_held || m_pending || !m_lichess)
         return;
     if (m_pause->isActive())
         return;   // the trickle is deliberate, see kPauseBetweenBatchesMs
     if (m_themes.isEmpty())
         return;
-    if (m_items.size() >= m_target)
+    // Die Zielgroesse haelt den Hintergrund auf, nicht den gezielten
+    // Nachschub: Ein voller Vorrat, in dem alles vom eigenen Niveau geloest
+    // ist, ist genau der Fall, fuer den fetchForLevel() da ist.
+    if (m_items.size() >= m_target && m_extra <= 0)
         return;
     if (m_emptyRounds >= kMaxEmptyRounds)
         return;
     requestBatch();
+}
+
+QString PuzzleFeed::levelForTheta(double theta)
+{
+    // Die Grenzen liegen zwischen den oben gemessenen Mittelwerten der fuenf
+    // Stufen (894, 1290, 1563, 1600, 2191). "normal" und "harder" liegen im
+    // Mittel fast gleich auf, unterscheiden sich aber oben deutlich -- die
+    // Grenze dazwischen ist deshalb keine Mitte, sondern das obere Ende von
+    // "normal".
+    if (theta < 1092.0)
+        return QStringLiteral("easiest");
+    if (theta < 1427.0)
+        return QStringLiteral("easier");
+    if (theta < 1600.0)
+        return QStringLiteral("normal");
+    if (theta < 1900.0)
+        return QStringLiteral("harder");
+    return QStringLiteral("hardest");
+}
+
+void PuzzleFeed::fetchForLevel(const QString& stufe, int wieviele, bool trotzVerbot)
+{
+    if (wieviele <= 0)
+        return;
+    m_forcedLevel = stufe;
+    m_extra = wieviele;
+    if (trotzVerbot)
+        m_oneShot = true;
+    m_emptyRounds = 0;
+    m_pause->stop();
+    m_message.clear();
+    emit changed();
+    refill();
 }
 
 void PuzzleFeed::scheduleRefill()
@@ -291,11 +331,17 @@ void PuzzleFeed::fetchNow()
 void PuzzleFeed::requestBatch()
 {
     const int missing = m_target - m_items.size();
-    const int want = missing < kBatchSize ? missing : kBatchSize;
+    // Was der gezielte Nachschub noch braucht, zaehlt mindestens so viel wie
+    // die Luecke bis zur Zielgroesse -- sonst bliebe er bei vollem Vorrat bei
+    // null stehen.
+    const int gebraucht = missing > m_extra ? missing : m_extra;
+    const int want = gebraucht < kBatchSize ? gebraucht : kBatchSize;
     if (want <= 0)
         return;
 
-    const QString level = QString::fromLatin1(kLevels[m_level % kLevelCount]);
+    const QString level = m_forcedLevel.isEmpty()
+            ? QString::fromLatin1(kLevels[m_level % kLevelCount])
+            : m_forcedLevel;
     m_pending = true;
     emit changed();
     m_lichess->fetchJson(QStringLiteral("/api/puzzle/batch/mix?nb=%1&difficulty=%2")
@@ -318,6 +364,12 @@ void PuzzleFeed::onJsonArrived(const QString& tag, int status, const QByteArray&
         m_message = tr("Neue Aufgaben konnte ich gerade nicht holen. "
                        "Die mitgelieferten reichen zum Üben.");
         ++m_emptyRounds;
+        // Ein gezielter Nachschub endet hier, auch wenn nichts kam: Sonst
+        // bliebe die Ausnahme vom Schalter stehen und das naechste
+        // Hintergrundrinnsal liefe ohne Einwilligung los.
+        m_extra = 0;
+        m_oneShot = false;
+        m_forcedLevel.clear();
         emit changed();
         return;
     }
@@ -329,7 +381,12 @@ void PuzzleFeed::onJsonArrived(const QString& tag, int status, const QByteArray&
     QHash<QString, int> perDimension;
     for (int i = 0; i < m_items.size(); ++i)
         perDimension[m_items.at(i).value(QStringLiteral("dimension")).toString()] += 1;
-    const int cap = qMax(1, int(m_target * kMaxSharePerDimension));
+    // Die Obergrenze je Dimension haengt an der Groesse, die der Vorrat
+    // erreichen soll -- beim gezielten Nachschub ist das mehr als die
+    // Zielgroesse. Sonst waere bei vollem Vorrat jede Dimension schon am
+    // Anschlag und die Antwort landete vollstaendig im Papierkorb.
+    const int angestrebt = qMax(m_target, m_items.size() + m_extra);
+    const int cap = qMax(1, int(angestrebt * kMaxSharePerDimension));
 
     int added = 0;
     for (int i = 0; i < puzzles.size(); ++i) {
@@ -351,6 +408,17 @@ void PuzzleFeed::onJsonArrived(const QString& tag, int status, const QByteArray&
     // Round-robin over the five levels: each answer moves to the next one, so
     // the pool spreads instead of piling up around the middle.
     m_level = (m_level + 1) % kLevelCount;
+    if (m_extra > 0) {
+        m_extra -= added;
+        if (m_extra <= 0 || added < kMinUsefulPerBatch) {
+            // Fertig, oder die Stufe gibt nicht mehr her. Beides beendet den
+            // gezielten Nachschub; weiterfragen waere genau das Haemmern, das
+            // die Nutzungsbedingungen nicht wollen.
+            m_extra = 0;
+            m_oneShot = false;
+            m_forcedLevel.clear();
+        }
+    }
     if (added > 0)
         save();
     if (added >= kMinUsefulPerBatch)
@@ -360,7 +428,7 @@ void PuzzleFeed::onJsonArrived(const QString& tag, int status, const QByteArray&
     emit changed();
     // The next batch waits: filling a pool nobody is waiting for is not worth
     // being throttled over.
-    if (m_items.size() < m_target && m_emptyRounds < kMaxEmptyRounds)
+    if ((m_items.size() < m_target || m_extra > 0) && m_emptyRounds < kMaxEmptyRounds)
         m_pause->start();
 }
 

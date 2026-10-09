@@ -132,6 +132,12 @@ public:
     bool upsertCard(const core::Card& card);
     bool loadCard(const QString& id, core::Card& card) const;
     QVector<core::Card> dueCards(qint64 today, int limit = 50) const;
+    // Die Kennungen aller Karten, die mit `prefix` anfangen. Gebraucht fuer
+    // die Uebungsstellungen ("item/<id>"): Was einmal eine Karte war, hat der
+    // Lernende gesehen, und eine Stellung, die wiederkommt, misst nur noch,
+    // ob er sie kennt (teacher.md §5.2). Der Praefix wird als LIKE-Muster
+    // benutzt, deshalb nur mit festen Zeichenketten aufrufen.
+    QStringList cardIdsStartingWith(const QString& prefix) const;
     int dueCardCount(qint64 today) const;
     int backlogCount(qint64 today) const;
     int newCardsCreatedOn(qint64 day) const;

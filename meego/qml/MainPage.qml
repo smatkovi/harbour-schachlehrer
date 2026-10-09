@@ -165,6 +165,31 @@ Page {
                 }
             }
 
+            // ---- Nachschub, wenn das Niveau durch ist ------------------
+            // Erscheint nur, wenn die Uebungsstellungen auf dem gemessenen
+            // Niveau aufgebraucht sind und das Nachladen aus ist. Der Knopf
+            // ist die Einwilligung fuer diese eine Anfrage; der Schalter in
+            // den Einstellungen bleibt, wie er war.
+            Label {
+                x: AppTheme.horizontalPageMargin
+                width: parent.width - 2 * AppTheme.horizontalPageMargin
+                visible: teacher.puzzlesExhausted && !teacher.liveGame
+                wrapMode: Text.WordWrap
+                color: AppTheme.secondaryColor
+                font.pixelSize: AppTheme.fontSizeExtraSmall
+                // Ein Satz, nicht zusammengesetzt: lupdate liest nur, was als
+                // ganzes Literal in qsTr() steht.
+                text: qsTr("Die Aufgaben auf deinem Niveau sind durch - was jetzt kaeme, kennst du schon. Ich kann bei Lichess fuenfzig neue holen, passend zu deiner Staerke. Einmalig, ohne Konto.")
+            }
+
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: teacher.puzzlesExhausted && !teacher.liveGame
+                enabled: !teacher.feedBusy
+                text: teacher.feedBusy ? qsTr("Ich hole ...") : qsTr("Bei Lichess nachholen")
+                onClicked: teacher.fetchForMyLevel()
+            }
+
             // ---- Die unterbrochene Partie ------------------------------
             // Eine Sparringpartie überlebt das Schließen der App. Sie wird
             // nicht stillschweigend wieder aufgemacht: der Lernende sagt, ob

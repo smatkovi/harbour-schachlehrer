@@ -127,6 +127,10 @@ class TeacherEngine : public QObject
     Q_PROPERTY(bool feedBusy READ feedBusy NOTIFY feedChanged)
     Q_PROPERTY(QString feedMessage READ feedMessage NOTIFY feedChanged)
     Q_PROPERTY(int itemCount READ itemCount NOTIFY feedChanged)
+    // Wahr, sobald die Uebungsstellungen auf dem gemessenen Niveau durch sind
+    // und nichts nachgeholt wird (weil das Nachladen aus ist). Die
+    // Oberflaeche bietet dann "Bei Lichess nachholen" an.
+    Q_PROPERTY(bool puzzlesExhausted READ puzzlesExhausted NOTIFY feedChanged)
 
     Q_PROPERTY(QString lichessKeyStore READ lichessKeyStore NOTIFY lichessChanged)
     Q_PROPERTY(bool lichessKeyEncrypted READ lichessKeyEncrypted NOTIFY lichessChanged)
@@ -263,6 +267,7 @@ public:
     bool lichessKeyEncrypted() const;
 
     bool feedAllowed() const;
+    bool puzzlesExhausted() const { return m_puzzlesExhausted; }
     void setFeedAllowed(bool allowed);
     int feedCount() const;
     int feedTarget() const;
@@ -344,6 +349,12 @@ public:
     Q_INVOKABLE void lichessSyncGames();
     // Fetch now, rather than waiting for the next start.
     Q_INVOKABLE void fetchPuzzles();
+    // "Bei Lichess nachholen" -- der Knopf, der erscheint, wenn die Aufgaben
+    // auf dem eigenen Niveau durch sind. Holt gezielt fuer dieses Niveau und
+    // **einmalig auch dann, wenn das Nachladen ausgeschaltet ist**: Der
+    // Knopfdruck ist die Einwilligung, der Schalter in den Einstellungen
+    // bleibt, wie er war.
+    Q_INVOKABLE void fetchForMyLevel();
     // Throw away everything that was fetched; the shipped bank stays.
     Q_INVOKABLE void clearFetchedPuzzles();
     // The game the sync brought in last, analysed **after** it ended — which
@@ -420,6 +431,10 @@ signals:
     void duelChanged();
 
 private slots:
+    // Der Vorrat hat sich geaendert. Kam etwas Neues an, waehrend auf
+    // Nachschub gewartet wurde, wird es **sofort** in die Bank eingehaengt
+    // und die Sitzung neu gebaut -- nicht erst beim naechsten Start.
+    void onFeedChanged();
     void onEngineResult(const schach::EngineResult& result);
     void onEngineFailed(const QString& reason);
     void onAnalysisFinished(const QVector<schach::core::Finding>& findings);
@@ -535,7 +550,14 @@ private:
     // What is being stepped through. -1 in `m_showStep` means nothing is.
     QStringList m_showLine;
     int m_showStep = -1;
-    QVector<core::Card> starterCards(core::Dimension dimension) const;
+    // Sechs Uebungsstellungen um das gemessene Niveau. `davonNeu` zaehlt,
+    // wie viele der Lernende noch nicht gesehen hat -- null heisst, dass die
+    // Bank auf diesem Niveau durch ist.
+    QVector<core::Card> starterCards(core::Dimension dimension,
+                                     int* davonNeu = 0) const;
+    // Kennungen aller Uebungsstellungen, die schon einmal eine Karte waren
+    // oder im Einstufungstest vorkamen.
+    QStringList solvedItemIds() const;
     // The answer being composed (teacher.md §6.5). A one-move task is a line
     // of length one, so there is only one code path for both.
     core::SolutionLine m_line;
@@ -544,6 +566,14 @@ private:
     void syncBoardToLine();
     void updateLineProgress();
     static QString lineSan(const QString& fen, const QStringList& line);
+
+    // Nachschub fuer das eigene Niveau: wird angefordert, wenn die Bank dort
+    // nichts Neues mehr hat, und eingehaengt, sobald er da ist.
+    void requestLevelTopUp(core::Dimension dimension);
+    bool m_waitingForPuzzles = false;
+    bool m_puzzlesExhausted = false;
+    int m_feedSeenCount = 0;
+    core::Dimension m_topUpDimension = core::Dimension::TAK;
 
     QStringList m_usedItems;   // one position is never asked twice in a run
     QStringList m_seenItems;   // and, if it can be helped, never twice at all

@@ -199,6 +199,13 @@ class Lichess : public QObject
 public:
     enum State { LoggedOut = 0, Authorising = 1, LoggedIn = 2 };
 
+    // Kann die TLS-Bibliothek, gegen die Qt gebaut ist, ueberhaupt TLS 1.2?
+    // Auf Harmattan nicht (OpenSSL 0.9.8 von 2011), auf Sailfish schon.
+    // Oeffentlich, damit die Oberflaeche sagen kann, warum etwas nicht geht.
+    static bool tlsTooOld();
+    // Das Hilfsprogramm, das dort einspringt -- leer, wenn es keines gibt.
+    static QString httpsHelper();
+
     explicit Lichess(QObject* parent = 0);
     ~Lichess();
 
@@ -343,6 +350,10 @@ private:
     void setMessage(const QString& sentence);
     void enqueue(const PendingRequest& request);
     void pump();
+    // Der Abruf ueber das Hilfsprogramm. Gibt false zurueck, wenn dieser Weg
+    // fuer die anstehende Anfrage nicht in Frage kommt -- dann laeuft sie
+    // weiter ueber Qt.
+    bool pumpViaHelper();
     void routeReply(const PendingRequest& request, int status, const QByteArray& body);
 
     void openEventStream();

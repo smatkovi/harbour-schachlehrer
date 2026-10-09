@@ -314,6 +314,10 @@
         <translation>Sparring mit Rücknahme und Erklärung</translation>
     </message>
     <message>
+        <source>Die Aufgaben auf deinem Niveau sind durch - was jetzt kaeme, kennst du schon. Ich kann bei Lichess fuenfzig neue holen, passend zu deiner Staerke. Einmalig, ohne Konto.</source>
+        <translation>Die Aufgaben auf deinem Niveau sind durch - was jetzt käme, kennst du schon. Ich kann bei Lichess fünfzig neue holen, passend zu deiner Stärke. Einmalig, ohne Konto.</translation>
+    </message>
+    <message>
         <source>Fuenfundzwanzig Aufgaben reichen nicht, um einzelne Fertigkeiten sicher zu trennen. 'Unauffaellig' heisst deshalb meistens: nichts stach heraus - nicht, dass nichts gemessen wurde.</source>
         <translation>Fünfundzwanzig Aufgaben reichen nicht, um einzelne Fertigkeiten sicher zu trennen. 'Unauffällig' heißt deshalb meistens: nichts stach heraus - nicht, dass nichts gemessen wurde.</translation>
     </message>

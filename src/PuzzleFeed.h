@@ -104,6 +104,32 @@ public:
     // The learner pressed "Jetzt holen": forget that it gave up, skip the
     // pause, ask again. An explicit request is not the background trickle.
     void fetchNow();
+
+    // Nachschub fuer **eine** Schwierigkeit, jetzt, weil die Aufgaben auf dem
+    // Niveau des Lernenden aufgebraucht sind. Drei Unterschiede zum
+    // Hintergrundrinnsal, und jeder hat einen Grund:
+    //
+    //  * Die Stufe wird vorgegeben statt reihum gewaehlt. Wer bei 1500 steht
+    //    und alles bei 1500 geloest hat, ist mit zwanzig Aufgaben um 894 nicht
+    //    bedient -- dann misst die Wiederholung, ob er sich erinnert, und das
+    //    ist nach teacher.md §5.2 nichts wert.
+    //  * Die Zielgroesse haelt nicht auf. Ein voller Vorrat, in dem alles vom
+    //    eigenen Niveau geloest ist, ist genau der Fall, um den es hier geht.
+    //  * `erlaubt` hebt die Einwilligung fuer diese eine Anfrage auf: Der
+    //    Knopf, den der Lernende gerade gedrueckt hat, **ist** die
+    //    Einwilligung. Der Schalter in den Einstellungen bleibt, wie er war.
+    //
+    // `stufe` ist einer der fuenf Lichess-Namen; levelForTheta() rechnet ihn
+    // aus dem gemessenen Niveau aus.
+    void fetchForLevel(const QString& stufe, int wieviele, bool trotzVerbot = false);
+
+    // Welche der fuenf Lichess-Stufen zu einem gemessenen Niveau passt.
+    // Static, damit der Test sie ohne Netz und ohne Lichess-Objekt prueft.
+    static QString levelForTheta(double theta);
+
+    // Wie viele ueber die Zielgroesse hinaus noch erwartet werden. > 0 heisst:
+    // ein gezielter Nachschub laeuft noch.
+    int extraWanted() const { return m_extra; }
     // Off by default: nothing reaches the network until the learner says so.
     void setAllowed(bool allowed);
     bool allowed() const { return m_allowed; }
@@ -149,6 +175,13 @@ private:
     QTimer* m_pause;
     int m_target;
     int m_level;          // index into the five difficulty names
+    // Gezielter Nachschub: die verlangte Stufe (leer = reihum) und wie viele
+    // ueber die Zielgroesse hinaus noch fehlen.
+    QString m_forcedLevel;
+    int m_extra;
+    // Gilt nur fuer den laufenden gezielten Nachschub: Der Knopfdruck ersetzt
+    // den Schalter, ohne ihn umzulegen.
+    bool m_oneShot;
     int m_emptyRounds;    // how many answers in a row brought nothing new
     bool m_pending;
     bool m_allowed;

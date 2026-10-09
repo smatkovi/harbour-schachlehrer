@@ -64,6 +64,11 @@ std::string joinUci(const std::vector<std::string>& moves)
 // wants a position the learner has not seen, and a bank that never grows runs
 // out of those.
 const int kDefaultFeedTarget = 500;
+// Wie viele auf einmal nachgeholt werden, wenn die Bank auf dem eigenen
+// Niveau durch ist. Fuenfzig ist genau eine Anfrage an die Schnittstelle --
+// mehr waere eine zweite Runde und eine weitere Pause, und sechs davon
+// reichen fuer die naechste Sitzung mehrfach.
+const int kTopUpBatch = 50;
 
 // Sparring: 50–250 ms per move (docs/design.md §5). Enough for a decent move
 // on a phone, short enough that the board never feels stuck.
@@ -198,7 +203,7 @@ void TeacherEngine::setPaths(const QString& enginePath, const QString& syzygyPat
     m_lichess->setDataDirectory(dataDirectory);
     if (!m_feed) {
         m_feed = new PuzzleFeed(m_lichess, this);
-        connect(m_feed, SIGNAL(changed()), this, SIGNAL(feedChanged()));
+        connect(m_feed, SIGNAL(changed()), this, SLOT(onFeedChanged()));
     }
     m_feedDirectory = dataDirectory;
     // A token from an earlier run means the event stream can come up at once;
@@ -784,6 +789,78 @@ void TeacherEngine::fetchPuzzles()
     m_feed->fetchNow();
 }
 
+void TeacherEngine::requestLevelTopUp(core::Dimension dimension)
+{
+    if (!m_feed)
+        return;
+    // Nicht waehrend einer laufenden Partie: Der Client stellt eine Anfrage
+    // auf einmal (platform.md §3.4), und ein Stapel Aufgaben darf nie vor
+    // einem Zug auf der Uhr stehen.
+    if (!m_liveGameId.isEmpty())
+        return;
+    m_topUpDimension = dimension;
+    const QString stufe = PuzzleFeed::levelForTheta(core::thetaOf(m_skill, dimension));
+    if (m_feed->allowed()) {
+        m_waitingForPuzzles = true;
+        m_puzzlesExhausted = false;
+        m_feedSeenCount = m_feed->count();
+        m_feed->fetchForLevel(stufe, kTopUpBatch);
+        setPrompt(tr("Die Aufgaben auf deinem Niveau sind durch. Ich hole neue von Lichess."));
+    } else {
+        // Ohne Einwilligung geht nichts auf die Leitung. Die Oberflaeche
+        // bietet stattdessen den Knopf an -- und der Lernende sieht, warum.
+        m_puzzlesExhausted = true;
+        setPrompt(tr("Die Aufgaben auf deinem Niveau sind durch. Was jetzt noch kommt, "
+                     "kennst du schon. Bei Lichess nachholen?"));
+    }
+    emit feedChanged();
+}
+
+void TeacherEngine::fetchForMyLevel()
+{
+    if (!m_feed)
+        return;
+    if (!m_liveGameId.isEmpty()) {
+        setFeedback(tr("Während der Partie hole ich nichts nach. Danach gern."),
+                    QStringLiteral("feed.live"));
+        return;
+    }
+    const QString stufe = PuzzleFeed::levelForTheta(
+                core::thetaOf(m_skill, m_topUpDimension));
+    m_waitingForPuzzles = true;
+    m_puzzlesExhausted = false;
+    m_feedSeenCount = m_feed->count();
+    // true: der Knopfdruck ersetzt den Schalter fuer diese eine Anfrage.
+    m_feed->fetchForLevel(stufe, kTopUpBatch, true);
+    setPrompt(tr("Ich hole neue Aufgaben auf deinem Niveau."));
+    emit feedChanged();
+}
+
+void TeacherEngine::onFeedChanged()
+{
+    if (m_waitingForPuzzles && m_feed && m_feed->count() > m_feedSeenCount) {
+        m_feedSeenCount = m_feed->count();
+        // Sofort einhaengen statt erst beim naechsten Start: Wer gerade
+        // dasteht, weil nichts Neues da war, soll die neuen Aufgaben in
+        // dieser Sitzung bekommen. Doppelte Kennungen ignoriert merge().
+        m_items.merge(m_feed->poolPath());
+        if (!m_feed->fetching() && m_feed->extraWanted() <= 0) {
+            m_waitingForPuzzles = false;
+            // Und die Sitzung noch einmal bauen, damit die neuen Stellungen
+            // Karten werden. startSession() prueft selbst, ob das geht.
+            if (m_mode == Drill || m_mode == Idle)
+                startSession();
+        }
+    } else if (m_waitingForPuzzles && m_feed && !m_feed->fetching()
+               && m_feed->extraWanted() <= 0) {
+        // Nichts gekommen. Das ist keine Stoerung, die der Lernende beheben
+        // muesste -- aber er soll nicht auf etwas warten, das nicht kommt.
+        m_waitingForPuzzles = false;
+        m_puzzlesExhausted = true;
+    }
+    emit feedChanged();
+}
+
 void TeacherEngine::clearFetchedPuzzles()
 {
     if (!m_feed)
@@ -868,8 +945,9 @@ void TeacherEngine::startSession()
     // the calibrated positions the test itself is built from. They need no
     // engine, so this also works when the engine is missing.
     bool starter = false;
+    int neue = 0;
     if (m_sessionCards.isEmpty()) {
-        m_sessionCards = starterCards(newDimension);
+        m_sessionCards = starterCards(newDimension, &neue);
         starter = !m_sessionCards.isEmpty();
         // They have to be in the database before the first answer, otherwise
         // the review has no card to attach to: the grade, the hint and the
@@ -882,6 +960,13 @@ void TeacherEngine::startSession()
                 m_database->upsertCard(m_sessionCards.at(i));
         }
     }
+    // Nichts Neues mehr auf diesem Niveau: entweder gar keine Stellung, oder
+    // sechs, die der Lernende alle schon gesehen hat. Eine Stellung, die
+    // wiederkommt, misst nur noch, ob er sie kennt (teacher.md §5.2) -- das
+    // ist der Punkt, an dem Nachschub etwas wert ist.
+    if (m_sessionCards.isEmpty() || (starter && neue == 0))
+        requestLevelTopUp(newDimension);
+
     m_sessionIndex = 0;
     setMode(Drill);
     setPrompt(!m_sessionCards.isEmpty()
@@ -1823,20 +1908,43 @@ void TeacherEngine::endReview()
 // Practice material for a learner who has just been measured and has no cards
 // yet: the placement items, picked around the measured level of the dimension
 // that needs the work. They carry their own solution, so no engine is needed.
-QVector<core::Card> TeacherEngine::starterCards(core::Dimension dimension) const
+QStringList TeacherEngine::solvedItemIds() const
+{
+    // Was einmal eine Karte war, hat der Lernende gesehen. Der Praefix faellt
+    // weg, weil die Bank ihre Stellungen unter der blossen Kennung fuehrt.
+    QStringList ids = m_seenItems;
+    if (!m_database)
+        return ids;
+    const QStringList karten = m_database->cardIdsStartingWith(QStringLiteral("item/"));
+    for (int i = 0; i < karten.size(); ++i)
+        ids << karten.at(i).mid(5);
+    return ids;
+}
+
+QVector<core::Card> TeacherEngine::starterCards(core::Dimension dimension,
+                                                int* davonNeu) const
 {
     QVector<core::Card> cards;
+    if (davonNeu)
+        *davonNeu = 0;
     if (m_items.isEmpty())
         return cards;
     const double level = core::thetaOf(m_skill, dimension);
+    // Gesehene werden gemieden, solange es ungesehene gibt -- weich, nicht
+    // hart: Eine alte Stellung ist immer noch besser als keine. Wie viele
+    // davon wirklich neu sind, sagt `davonNeu`, und daran haengt, ob
+    // Nachschub geholt wird.
+    const QStringList gesehen = solvedItemIds();
     QStringList used;
     for (int i = 0; i < 6; ++i) {
         // Slightly below the measured level and rising: the first task of a
         // session should be solvable, not a test (teacher.md §5.6).
         const double target = level - 100.0 + i * 40.0;
-        const PlacementItem* item = m_items.pick(dimension, target, used);
+        const PlacementItem* item = m_items.pick(dimension, target, used, gesehen);
         if (!item)
             break;
+        if (davonNeu && !gesehen.contains(item->id))
+            ++(*davonNeu);
         used << item->id;
         core::Card card;
         card.id = std::string("item/") + item->id.toStdString();

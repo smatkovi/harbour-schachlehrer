@@ -31,6 +31,8 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QNetworkAccessManager>
+#include <QProcess>
+#include <QSslSocket>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QTcpServer>
@@ -729,6 +731,93 @@ void Lichess::enqueue(const PendingRequest& request)
     pump();
 }
 
+bool Lichess::tlsTooOld()
+{
+    // Harmattan liefert Qt 4.7 gegen OpenSSL 0.9.8 von 2011. Das kann TLS 1.0
+    // und sonst nichts; lichess.org verlangt mindestens 1.2 und bricht die
+    // Verbindung ab, bevor eine Anfrage hinausgeht. TLS 1.2 gibt es ab
+    // OpenSSL 1.0.1 -- alles darunter ist hier das Kriterium, und zwar zur
+    // Laufzeit und nicht beim Uebersetzen: dieselbe Quelle baut fuer Sailfish,
+    // wo nichts davon zutrifft.
+    if (!QSslSocket::supportsSsl())
+        return true;
+#if QT_VERSION >= QT_VERSION_CHECK(4, 8, 0)
+    return QSslSocket::sslLibraryVersionNumber() < 0x10001000L;
+#else
+    // Qt 4.7 kennt die Abfrage noch nicht (sie kam mit 4.8). Ein Qt dieses
+    // Alters steht hier nur auf Harmattan, und dort ist die Antwort ohnehin
+    // ja -- die Pruefung waere eine Hoeflichkeit ohne zweiten Fall.
+    return true;
+#endif
+}
+
+QString Lichess::httpsHelper()
+{
+    // Ein `wget`, das TLS 1.2 kann. Auf dem N9/N950 liegt eines in
+    // /opt/wunderw -- dieselbe Kruecke, die auch Sveriges Radio und der
+    // Mastodon-Feed dort benutzen. Die Umgebungsvariable ist fuer den Fall,
+    // dass es woanders liegt; gibt es keines, bleibt es beim Qt-Weg, und der
+    // Abruf scheitert mit einer Meldung statt stillschweigend.
+    const QByteArray gesetzt = qgetenv("SCHACH_HTTPS_HELPER");
+    if (!gesetzt.isEmpty() && QFile::exists(QString::fromLocal8Bit(gesetzt)))
+        return QString::fromLocal8Bit(gesetzt);
+    static const char* kOrte[] = {
+        "/opt/wunderw/bin/wget",
+        "/usr/local/bin/wget",
+    };
+    for (unsigned i = 0; i < sizeof(kOrte) / sizeof(kOrte[0]); ++i) {
+        if (QFile::exists(QString::fromLatin1(kOrte[i])))
+            return QString::fromLatin1(kOrte[i]);
+    }
+    return QString();
+}
+
+bool Lichess::pumpViaHelper()
+{
+    // Nur fuer einfache Abrufe: GET, Antwort am Stueck. Die beiden
+    // Ereignisstroeme laufen weiter ueber Qt und bleiben auf Harmattan
+    // folgerichtig stumm -- ein Strom laesst sich nicht als einmaliger
+    // Prozessaufruf fuehren, und fuer die Aufgaben braucht es ihn nicht.
+    if (m_current.post || m_current.remove)
+        return false;
+    const QString helfer = httpsHelper();
+    if (helfer.isEmpty())
+        return false;
+
+    QStringList argumente;
+    argumente << QStringLiteral("-q") << QStringLiteral("-O") << QStringLiteral("-")
+              << QStringLiteral("--timeout=30")
+              << QStringLiteral("--header=Accept: application/json");
+    if (!m_token.isEmpty())
+        argumente << QStringLiteral("--header=Authorization: Bearer ") + m_token;
+    argumente << m_endpoint + m_current.path;
+
+    QProcess holer;
+    holer.start(helfer, argumente);
+    // Blockierend, und das ist hier vertretbar: Es ist ein Abruf auf einmal
+    // (§3.4), er haengt an einem Zeitlimit, und auf dem Geraet, das diesen
+    // Weg braucht, ist die Alternative gar keine Verbindung.
+    if (!holer.waitForStarted(5000)) {
+        m_busy = false;
+        routeReply(m_current, 0, QByteArray());
+        m_current = PendingRequest();
+        return true;
+    }
+    holer.waitForFinished(45000);
+    const QByteArray koerper = holer.readAllStandardOutput();
+    // wget sagt nicht, welcher Code kam. Null heisst geholt; alles andere ist
+    // fuer diesen Zweck dasselbe wie eine Absage, und die Aufrufer behandeln
+    // jeden Code ausserhalb 2xx gleich.
+    const int status = (holer.exitStatus() == QProcess::NormalExit
+                        && holer.exitCode() == 0 && !koerper.isEmpty()) ? 200 : 0;
+    const PendingRequest erledigt = m_current;
+    m_current = PendingRequest();
+    m_busy = false;
+    routeReply(erledigt, status, koerper);
+    pump();
+    return true;
+}
+
 void Lichess::pump()
 {
     // §3.4, verbatim: "Only make one request at a time."
@@ -736,6 +825,10 @@ void Lichess::pump()
         return;
     m_current = m_queue.dequeue();
     m_busy = true;
+
+    // Wo Qts TLS zu alt ist, geht der einfache Abruf ueber ein Hilfsprogramm.
+    if (tlsTooOld() && pumpViaHelper())
+        return;
 
     QNetworkRequest request(QUrl(m_endpoint + m_current.path));
     if (!m_token.isEmpty()) {

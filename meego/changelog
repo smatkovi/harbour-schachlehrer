@@ -1,3 +1,20 @@
+harbour-schachlehrer (0.4.0) unstable; urgency=low
+
+  * Sind die Übungsstellungen auf dem gemessenen Niveau durch, holt die App
+    gezielt Nachschub von Lichess -- auf der Schwierigkeitsstufe, die zur
+    eigenen Stärke passt, und sofort nutzbar statt erst beim nächsten Start.
+    Eine Stellung, die wiederkommt, misst nur noch, ob man sie kennt.
+  * Ist das Nachladen ausgeschaltet, steht auf der Startseite stattdessen
+    "Bei Lichess nachholen". Der Knopfdruck gilt einmalig und lässt den
+    Schalter in den Einstellungen in Ruhe.
+  * Damit das auf dem N9/N950 überhaupt geht: Qt 4 ist hier gegen OpenSSL
+    0.9.8 von 2011 gebaut und kann kein TLS 1.2, lichess.org verlangt aber
+    mindestens das. Einfache Abrufe laufen deshalb über ein wget aus
+    /opt/wunderw. Die beiden Ereignisströme (Partie, Benachrichtigungen)
+    gehen weiter über Qt und bleiben hier stumm.
+
+ -- Sebastian Matkovich <sebastian.matkovich@gmail.com>  Fri, 09 Oct 2026 12:40:00 +0200
+
 harbour-schachlehrer (0.3.0) unstable; urgency=low
 
   * Partie gegen ein zweites Gerät: im selben WLAN oder über Bluetooth, ohne

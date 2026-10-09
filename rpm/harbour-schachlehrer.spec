@@ -1,5 +1,5 @@
 Name:    harbour-schachlehrer
-Version: 0.3.0
+Version: 0.4.0
 Release: 1
 Summary: Chess coach for Sailfish OS: measure, play, diagnose, drill
 License: GPL-3.0-or-later
@@ -209,6 +209,15 @@ exit 0
 %{_datadir}/licenses/%{name}
 
 %changelog
+* Fri Oct 09 2026 smatkovi <smatkovi@users.noreply.github.com> - 0.4.0-1
+- Sind die Uebungsstellungen auf dem gemessenen Niveau durch, holt die App
+  gezielt Nachschub von Lichess -- auf der passenden Schwierigkeitsstufe,
+  und sofort nutzbar statt erst beim naechsten Start. Ist das Nachladen
+  ausgeschaltet, erscheint stattdessen ein Knopf; der Druck darauf gilt
+  einmalig und laesst den Schalter in Ruhe
+- Wo Qts TLS zu alt fuer lichess.org ist (Harmattan: OpenSSL 0.9.8), laufen
+  einfache Abrufe ueber ein wget aus /opt/wunderw
+
 * Wed Sep 24 2026 smatkovi - 0.2.1-1
 - Die Sparringpartie überlebt das Schließen der App. Sie wird nach jedem Zug
   weggeschrieben und nicht erst beim Beenden — ein Programm, das der
