@@ -36,7 +36,13 @@ set -e
 cd "$(dirname "$0")/.."
 
 XGCC=${XGCC:-/tmp/xgcc-harmattan}
-SYSROOT=${SYSROOT:-$HOME/QtSDK/Madde/sysroots/harmattan_sysroot_10.2011.34-1_slim}
+# Leer lassen. Das Sysroot liegt unter dem $HOME des **Baurechners**, und
+# dieses Skript laeuft auf dem Telefon: Ein hier eingesetztes
+# /home/defaultuser/QtSDK/... gibt es auf arch nicht. Der Compiler bekaeme
+# dann ein Sysroot, das nicht existiert, faende features.h nicht und
+# schuettete eine Wand aus Folgefehlern aus, die nach kaputtem Toolchain
+# aussieht und keiner ist. Der Vorgabewert wird deshalb drueben gesetzt.
+SYSROOT=${SYSROOT:-}
 REMOTE=${REMOTE:-/tmp/sf-harmattan}
 NET=nn-37f18f62d772.nnue
 
@@ -48,6 +54,9 @@ ssh "$HOST" "mkdir -p $REMOTE"
 rsync -a -e ssh "assets/$NET" meego/compat/c99math.h "$HOST:$REMOTE/"
 
 ssh "$HOST" "set -e
+    SYSROOT='$SYSROOT'
+    [ -n \"\$SYSROOT\" ] || SYSROOT=\$HOME/QtSDK/Madde/sysroots/harmattan_sysroot_10.2011.34-1_slim
+    [ -d \"\$SYSROOT\" ] || { echo \"Sysroot fehlt: \$SYSROOT\" >&2; exit 1; }
     cd $REMOTE
     [ -d Stockfish ] || git clone --branch sf_17.1 --depth 1 \
         https://github.com/official-stockfish/Stockfish.git
@@ -64,9 +73,9 @@ ssh "$HOST" "set -e
     make clean >/dev/null 2>&1 || true
     nice -n 15 make -j6 ARCH=armv7-neon COMP=gcc \
         CXX=$XGCC/bin/arm-none-linux-gnueabi-g++ \
-        EXTRACXXFLAGS='--sysroot=$SYSROOT -include $REMOTE/c99math.h' \
-        EXTRALDFLAGS='--sysroot=$SYSROOT -static-libstdc++ -static-libgcc -pthread \
- -Wl,--dynamic-linker=/lib/ld-linux.so.3 $XGCC/arm-none-linux-gnueabi/lib/libatomic.a' \
+        EXTRACXXFLAGS=\"--sysroot=\$SYSROOT -include $REMOTE/c99math.h\" \
+        EXTRALDFLAGS=\"--sysroot=\$SYSROOT -static-libstdc++ -static-libgcc -pthread \
+ -Wl,--dynamic-linker=/lib/ld-linux.so.3 $XGCC/arm-none-linux-gnueabi/lib/libatomic.a\" \
         build
     $XGCC/bin/arm-none-linux-gnueabi-strip -s stockfish
     readelf -d stockfish | grep NEEDED
